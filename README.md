@@ -10,7 +10,11 @@
 
 This is a preview. The Swift app compiles, the read-only package tests pass, and the updated app is installed on the development Mac. macOS Screen Recording permission currently blocks the real recording and end-to-end agent review test. The project page includes an actual panel screenshot and clearly labelled promotional artwork. **A real demo video has not yet been captured or published.**
 
-## Use it
+## Show one thing — no shortcut needed
+
+Open Screen Pointer and click **Show something to my agent** at the top of the panel. Move your mouse onto the thing you mean within five seconds. The app saves a screenshot with a yellow circle around that spot, then reopens its panel with success or failure status. Tell your connected agent **“Look at my latest point.”** The button saves locally; it does not send automatically. Control–Option–P is no longer registered.
+
+## Record a walkthrough
 
 1. Open Screen Pointer from `~/Applications`. Enable it in System Settings → Privacy & Security → Screen & System Audio Recording. Reopen it if macOS requests this.
 2. Put the mouse on the display to record. Press **Control–Option–R**, or click **Record walkthrough**.
@@ -27,7 +31,6 @@ This is a preview. The Swift app compiles, the read-only package tests pass, and
 | Control–Option–N | Add a timestamped note |
 | Control–Option–C | Clear the annotations |
 | Control–Option–H | Toggle the cursor ring |
-| Control–Option–P | Capture one pointed-at area |
 
 Typing a note takes keyboard focus; drawing temporarily takes mouse input. The recorder captures only the display selected when it starts. This preview does not record microphone or system audio. Quit while recording first stops and prepares the recording; quit again after preparation/review finishes.
 

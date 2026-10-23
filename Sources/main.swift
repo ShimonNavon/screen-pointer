@@ -27,7 +27,7 @@ final class AppModel: ObservableObject {
     @Published var lastSession: URL?
     @Published var reviewing = false
     @Published var lastClip: String?
-    @Published var pointStatus = "Point at something and press ⌃⌥P"
+    @Published var pointStatus = "Open Screen Pointer and click Show something to my agent."
     @Published var capturingPoint = false
     @Published var lastPoint: URL?
 
@@ -214,6 +214,15 @@ struct MenuView: View {
                 Text(statusText).font(.system(size: 11, weight: .medium)).foregroundStyle(.secondary)
             }
 
+            Text("Show something to your coding agent").font(.system(size: 12, weight: .semibold))
+            Text("Click the button, then move your mouse onto what you mean. In 5 seconds, a screenshot is saved with a circle around that spot.")
+                .font(.system(size: 12)).foregroundStyle(.secondary).fixedSize(horizontal: false, vertical: true)
+            Button("Show something to my agent", action: onCapture)
+                .buttonStyle(.borderedProminent).disabled(model.capturingPoint || model.recording)
+            if model.lastPoint != nil { Button("Copy agent prompt", action: onCopyPoint) }
+            Text(model.pointStatus).font(.system(size: 11)).foregroundStyle(.secondary)
+                .fixedSize(horizontal: false, vertical: true)
+            Divider()
             HStack {
                 Button(model.recording ? "Stop recording" : "Record walkthrough") {
                     NotificationCenter.default.post(name: model.recording ? .stopRecording : .startRecording, object: nil)
@@ -234,16 +243,6 @@ struct MenuView: View {
                 }
             }
             Toggle("Review in OpenCode after stopping", isOn: $model.autoReview).font(.system(size: 11))
-            Divider()
-            Text("Show your agent a specific spot").font(.system(size: 12, weight: .semibold))
-            Text("Point with your mouse, press ⌃⌥P, then ask your agent to look at your latest point.")
-                .font(.system(size: 12)).foregroundStyle(.secondary)
-            HStack {
-                Button("Capture in 3 seconds", action: onCapture).disabled(model.capturingPoint)
-                if model.lastPoint != nil { Button("Copy agent prompt", action: onCopyPoint) }
-            }
-            Text(model.pointStatus).font(.system(size: 11)).foregroundStyle(.secondary)
-                .fixedSize(horizontal: false, vertical: true)
             Divider()
             Toggle(isOn: $model.highlightOn) { Label("Highlight cursor", systemImage: "circle.dashed") }
                 .toggleStyle(.switch)
@@ -322,7 +321,6 @@ final class AppDelegate: NSObject, NSApplicationDelegate {
     private var hotKey: EventHotKeyRef?
     private var recordKey: EventHotKeyRef?
     private var drawKey: EventHotKeyRef?
-    private var pointKey: EventHotKeyRef?
     private var noteKey: EventHotKeyRef?
     private var clearKey: EventHotKeyRef?
     private var activeSession: RecordingSession?
@@ -354,7 +352,7 @@ final class AppDelegate: NSObject, NSApplicationDelegate {
             onNote: { [weak self] in self?.addNote() },
             onReview: { [weak self] in self?.reviewInOpenCode() },
             onCopyReview: { [weak self] in self?.copyReviewPrompt() },
-            onCapture: { [weak self] in self?.capturePoint(after: 3) },
+            onCapture: { [weak self] in self?.capturePoint(after: 5) },
             onCopyPoint: { [weak self] in self?.copyPointPrompt() },
             onQuit: { NSApp.terminate(nil) },
             onOpenClip: { [weak self] in self?.openLastClip() },
@@ -501,7 +499,6 @@ final class AppDelegate: NSObject, NSApplicationDelegate {
                 switch hk.id {
                 case 2: delegate.startRecording()          // ⌃⌥R (toggles in its own handler)
                 case 3: delegate.toggleDraw()
-                case 4: delegate.capturePoint(after: 0)
                 case 5: delegate.addNote()
                 case 6: delegate.clearAnnotations()
                 default: delegate.toggleHighlight()
@@ -517,8 +514,6 @@ final class AppDelegate: NSObject, NSApplicationDelegate {
                             EventHotKeyID(signature: sig, id: 2), GetApplicationEventTarget(), 0, &recordKey)
         RegisterEventHotKey(UInt32(kVK_ANSI_D), UInt32(controlKey | optionKey),
                             EventHotKeyID(signature: sig, id: 3), GetApplicationEventTarget(), 0, &drawKey)
-        RegisterEventHotKey(UInt32(kVK_ANSI_P), UInt32(controlKey | optionKey),
-                            EventHotKeyID(signature: sig, id: 4), GetApplicationEventTarget(), 0, &pointKey)
         RegisterEventHotKey(UInt32(kVK_ANSI_N), UInt32(controlKey | optionKey), EventHotKeyID(signature: sig, id: 5), GetApplicationEventTarget(), 0, &noteKey)
         RegisterEventHotKey(UInt32(kVK_ANSI_C), UInt32(controlKey | optionKey), EventHotKeyID(signature: sig, id: 6), GetApplicationEventTarget(), 0, &clearKey)
     }
@@ -540,7 +535,7 @@ final class AppDelegate: NSObject, NSApplicationDelegate {
             model.pointStatus = "Point capture requires macOS 14 or later."; return
         }
         model.capturingPoint = true
-        model.pointStatus = delay > 0 ? "Move your mouse to the spot — capturing in 3 seconds…" : "Capturing…"
+        model.pointStatus = delay > 0 ? "Move your mouse to the spot — capturing in 5 seconds…" : "Capturing…"
         panel.orderOut(nil)
         DispatchQueue.main.asyncAfter(deadline: .now() + delay) { [weak self] in
             Task { @MainActor [weak self] in
@@ -548,8 +543,9 @@ final class AppDelegate: NSObject, NSApplicationDelegate {
                 defer { self.model.capturingPoint = false }
                 do {
                     self.model.lastPoint = try await PointCapture.capture()
-                    self.model.pointStatus = "Point saved. Ask your agent to read your latest point."
-                    self.status.button?.toolTip = "Point saved — ⌃⌥P captures another spot"
+                    self.model.pointStatus = "Saved. Tell your agent: Look at my latest point."
+                    self.showPanel()
+                    self.status.button?.toolTip = "Point saved — open Screen Pointer to show another spot"
                 } catch {
                     let code = (error as NSError).code
                     self.model.pointStatus = code == -3801
