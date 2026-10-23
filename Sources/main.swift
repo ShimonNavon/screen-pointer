@@ -46,8 +46,11 @@ final class AppDelegate: NSObject, NSApplicationDelegate {
     private var timer: Timer?
     private var status: NSStatusItem!
     private var hotKey: EventHotKeyRef?
+    private var recordKey: EventHotKeyRef?
     private var active = false
     var mode: HighlightView.Mode = .ring
+    private var recorder: Process?
+    private var recordingURL: URL?
 
     func applicationDidFinishLaunching(_ notification: Notification) {
         NSApp.setActivationPolicy(.accessory)
@@ -59,28 +62,44 @@ final class AppDelegate: NSObject, NSApplicationDelegate {
         let menu = NSMenu()
         menu.addItem(withTitle: "Show highlight", action: #selector(toggle), keyEquivalent: "")
         menu.addItem(withTitle: "Dim the rest (spotlight)", action: #selector(cycleMode), keyEquivalent: "")
+        menu.addItem(withTitle: "Record screen", action: #selector(toggleRecording), keyEquivalent: "")
         menu.addItem(.separator())
         menu.addItem(withTitle: "Quit", action: #selector(quit), keyEquivalent: "q")
         status.menu = menu
 
         registerHotKey()
         if ProcessInfo.processInfo.environment["PTR_ON"] == "1" { toggle() }
+        if let secs = Double(ProcessInfo.processInfo.environment["PTR_REC_SECONDS"] ?? "") {
+            DispatchQueue.main.asyncAfter(deadline: .now() + 0.5) {
+                self.startRecording()
+                DispatchQueue.main.asyncAfter(deadline: .now() + secs) { self.stopRecording() }
+            }
+        }
         NotificationCenter.default.addObserver(self, selector: #selector(screensChanged),
                                                name: NSApplication.didChangeScreenParametersNotification, object: nil)
     }
 
     private func registerHotKey() {
         var spec = EventTypeSpec(eventClass: OSType(kEventClassKeyboard), eventKind: UInt32(kEventHotKeyPressed))
-        InstallEventHandler(GetApplicationEventTarget(), { _, _, userData in
-            guard let userData else { return noErr }
+        InstallEventHandler(GetApplicationEventTarget(), { _, event, userData in
+            guard let event, let userData else { return noErr }
+            var hk = EventHotKeyID()
+            GetEventParameter(event, EventParamName(kEventParamDirectObject), EventParamType(typeEventHotKeyID),
+                              nil, MemoryLayout<EventHotKeyID>.size, nil, &hk)
             let delegate = Unmanaged<AppDelegate>.fromOpaque(userData).takeUnretainedValue()
-            DispatchQueue.main.async { delegate.toggle() }
+            DispatchQueue.main.async {
+                if hk.id == 2 { delegate.toggleRecording() } else { delegate.toggle() }
+            }
             return noErr
         }, 1, &spec, Unmanaged.passUnretained(self).toOpaque(), nil)
 
         let id = EventHotKeyID(signature: OSType(0x50545231), id: 1)  // 'PTR1'
         RegisterEventHotKey(UInt32(kVK_ANSI_H), UInt32(controlKey | optionKey), id,
                             GetApplicationEventTarget(), 0, &hotKey)
+
+        let recID = EventHotKeyID(signature: OSType(0x50545231), id: 2)
+        RegisterEventHotKey(UInt32(kVK_ANSI_R), UInt32(controlKey | optionKey), recID,
+                            GetApplicationEventTarget(), 0, &recordKey)
     }
 
     @objc func toggle() {
@@ -89,12 +108,65 @@ final class AppDelegate: NSObject, NSApplicationDelegate {
         if active { showWindows() } else { hideWindows() }
     }
 
+    @objc func quit() { NSApp.terminate(nil) }
+
     @objc func cycleMode() {
         mode = mode == .spotlight ? .ring : .spotlight
         windows.compactMap { $0.contentView as? HighlightView }.forEach { $0.mode = mode; $0.needsDisplay = true }
     }
 
-    @objc func quit() { NSApp.terminate(nil) }
+    // MARK: - recording
+
+    private static let recordingsDir: URL = {
+        let movies = FileManager.default.urls(for: .moviesDirectory, in: .userDomainMask).first!
+        let dir = movies.appendingPathComponent("Screen Pointer", isDirectory: true)
+        try? FileManager.default.createDirectory(at: dir, withIntermediateDirectories: true)
+        return dir
+    }()
+
+    private func stamp() -> String {
+        let f = DateFormatter(); f.dateFormat = "yyyy-MM-dd HH.mm.ss"
+        return f.string(from: Date())
+    }
+
+    @objc func toggleRecording() {
+        if recorder != nil { stopRecording() } else { startRecording() }
+    }
+
+    func startRecording() {
+        let url = AppDelegate.recordingsDir.appendingPathComponent("Screen \(stamp()).mov")
+        let p = Process()
+        p.executableURL = URL(fileURLWithPath: "/usr/sbin/screencapture")
+        p.arguments = ["-v", "-x", url.path]
+        p.terminationHandler = { [weak self] _ in
+            DispatchQueue.main.async { self?.finishRecording() }
+        }
+        do {
+            try p.run()
+            recorder = p
+            recordingURL = url
+            status.button?.title = "⏺"
+            status.button?.toolTip = "Recording to \(url.lastPathComponent) — ⌃⌥R to stop"
+        } catch {
+            NSLog("Screen Pointer: cannot start recording: \(error)")
+        }
+    }
+
+    func stopRecording() {
+        recorder?.interrupt()   // SIGINT finalises the movie
+    }
+
+    private func finishRecording() {
+        recorder = nil
+        status.button?.title = active ? "◉" : "○"
+        status.button?.toolTip = "Screen Pointer (⌃⌥H)"
+        if let url = recordingURL {
+            try? url.path.write(to: AppDelegate.recordingsDir.appendingPathComponent("last-recording.txt"),
+                                atomically: true, encoding: .utf8)
+            NSLog("Screen Pointer: saved \(url.path)")
+        }
+        recordingURL = nil
+    }
 
     private func showWindows() {
         hideWindows()

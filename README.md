@@ -16,6 +16,20 @@ shows up in screenshots and recordings.
 - Clicks pass straight through the overlay; it is never in the way.
 - No accessibility or screen-recording permission needed.
 
+## Recording
+
+- **⌃⌥R** starts recording the screen and **⌃⌥R** again stops it (menu bar shows ⏺ while recording).
+- Clips land in `~/Movies/Screen Pointer/Screen <date> <time>.mov`; the newest path is also written to
+  `last-recording.txt` next to them, so an agent can pick it up without guessing.
+- The ring is part of the recording, so pointing at something while recording is visible afterwards.
+- The first recording may ask for Screen Recording permission for Screen Pointer.
+
+Frames from a clip, for anyone who reads images rather than video:
+
+```bash
+ffmpeg -i "$(cat ~/Movies/'Screen Pointer'/last-recording.txt)" -vf fps=1 /tmp/frames/f%02d.png
+```
+
 ## Install
 
 ```bash
