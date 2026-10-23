@@ -48,13 +48,19 @@ open "$HOME/Applications/Screen Pointer.app"
 
 The app lives in the menu bar as ◉ (hollow ○ when off).
 
-## Menu
+## The panel
 
-| Item | What it does |
+Click the menu-bar icon for a panel: highlight on/off, "Dim the rest", a drawing surface with
+Arrow / Pen / Highlight / Box, colour swatches and a width slider, Undo and Clear, and the recorder
+with its elapsed timer plus a shortcut to the last clip. Every setting is remembered between launches.
+
+## Shortcuts
+
+| Shortcut | What it does |
 | --- | --- |
-| Show highlight | Toggle the overlay (same as ⌃⌥H) |
-| Dim the rest (spotlight) | Switch between ring-only and a spotlight that darkens the rest of the screen |
-| Quit | Exit |
+| ⌃⌥H | Highlight the cursor |
+| ⌃⌥D | Hand the mouse to the overlay for drawing |
+| ⌃⌥R | Start / stop a recording |
 
 ## How it is built
 
