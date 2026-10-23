@@ -16,9 +16,18 @@ shows up in screenshots and recordings.
 - Clicks pass straight through the overlay; it is never in the way.
 - No accessibility or screen-recording permission needed.
 
+## Annotating
+
+- **⌃⌥D** turns the overlay into a drawing surface; the menu's **Tool** picks Arrow, Pen, Highlight
+  or Rectangle. Draw over the screen, then **⌃⌥D** again to hand the mouse back to your apps.
+- Annotations stay on screen (and in recordings) until "Clear annotations".
+- While annotating, clicks go to the overlay, not to the app underneath — that is the point.
+
 ## Recording
 
 - **⌃⌥R** starts recording the screen and **⌃⌥R** again stops it (menu bar shows ⏺ while recording).
+- There is no length limit: it records until you stop it, bounded only by disk. Expect roughly
+  1 GB per hour at 1080p (a 5-second clip is about 1.4 MB).
 - Clips land in `~/Movies/Screen Pointer/Screen <date> <time>.mov`; the newest path is also written to
   `last-recording.txt` next to them, so an agent can pick it up without guessing.
 - The ring is part of the recording, so pointing at something while recording is visible afterwards.
