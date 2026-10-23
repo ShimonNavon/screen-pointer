@@ -20,6 +20,9 @@ final class AppModel: ObservableObject {
     @Published var recording = false
     @Published var elapsed = 0.0
     @Published var lastClip: String?
+    @Published var pointStatus = "Point at something and press ⌃⌥P"
+    @Published var capturingPoint = false
+    @Published var lastPoint: URL?
 
     var changed: () -> Void = {}
 
@@ -165,6 +168,8 @@ final class PointerWindow: NSWindow {
 
 struct MenuView: View {
     @ObservedObject var model: AppModel
+    let onCapture: () -> Void
+    let onCopyPoint: () -> Void
     let onQuit: () -> Void
     let onOpenClip: () -> Void
     let onClear: () -> Void
@@ -178,6 +183,16 @@ struct MenuView: View {
                 Text(statusText).font(.system(size: 11, weight: .medium)).foregroundStyle(.secondary)
             }
 
+            Text("Show your agent a specific spot").font(.system(size: 12, weight: .semibold))
+            Text("Point with your mouse, press ⌃⌥P, then ask your agent to look at your latest point.")
+                .font(.system(size: 12)).foregroundStyle(.secondary)
+            HStack {
+                Button("Capture in 3 seconds", action: onCapture).disabled(model.capturingPoint)
+                if model.lastPoint != nil { Button("Copy agent prompt", action: onCopyPoint) }
+            }
+            Text(model.pointStatus).font(.system(size: 11)).foregroundStyle(.secondary)
+                .fixedSize(horizontal: false, vertical: true)
+            Divider()
             Toggle(isOn: $model.highlightOn) { Label("Highlight cursor", systemImage: "circle.dashed") }
                 .toggleStyle(.switch)
             Toggle(isOn: $model.spotlight) { Label("Dim the rest", systemImage: "spotlight") }
@@ -268,6 +283,7 @@ final class AppDelegate: NSObject, NSApplicationDelegate {
     private var hotKey: EventHotKeyRef?
     private var recordKey: EventHotKeyRef?
     private var drawKey: EventHotKeyRef?
+    private var pointKey: EventHotKeyRef?
     private var recorder: Process?
     private var recordingURL: URL?
     private var recordStarted = Date()
@@ -291,6 +307,8 @@ final class AppDelegate: NSObject, NSApplicationDelegate {
 
         let host = NSHostingController(rootView: MenuView(
             model: model,
+            onCapture: { [weak self] in self?.capturePoint(after: 3) },
+            onCopyPoint: { [weak self] in self?.copyPointPrompt() },
             onQuit: { NSApp.terminate(nil) },
             onOpenClip: { [weak self] in self?.openLastClip() },
             onClear: { [weak self] in self?.allViews { $0.clearShapes() } },
@@ -331,6 +349,12 @@ final class AppDelegate: NSObject, NSApplicationDelegate {
             }
         }
         applyModel()
+        DispatchQueue.main.async { [weak self] in self?.showPanel() }
+    }
+
+    func applicationShouldHandleReopen(_ sender: NSApplication, hasVisibleWindows flag: Bool) -> Bool {
+        showPanel()
+        return true
     }
 
     // MARK: state -> UI
@@ -414,6 +438,7 @@ final class AppDelegate: NSObject, NSApplicationDelegate {
                 switch hk.id {
                 case 2: delegate.startRecording()          // ⌃⌥R (toggles in its own handler)
                 case 3: delegate.toggleDraw()
+                case 4: delegate.capturePoint(after: 0)
                 default: delegate.toggleHighlight()
                 }
             }
@@ -427,6 +452,8 @@ final class AppDelegate: NSObject, NSApplicationDelegate {
                             EventHotKeyID(signature: sig, id: 2), GetApplicationEventTarget(), 0, &recordKey)
         RegisterEventHotKey(UInt32(kVK_ANSI_D), UInt32(controlKey | optionKey),
                             EventHotKeyID(signature: sig, id: 3), GetApplicationEventTarget(), 0, &drawKey)
+        RegisterEventHotKey(UInt32(kVK_ANSI_P), UInt32(controlKey | optionKey),
+                            EventHotKeyID(signature: sig, id: 4), GetApplicationEventTarget(), 0, &pointKey)
     }
 
     private func toggleHighlight() {
@@ -436,6 +463,42 @@ final class AppDelegate: NSObject, NSApplicationDelegate {
     private func toggleDraw() {
         model.drawMode.toggle()
         if model.drawMode { model.highlightOn = true }
+    }
+
+    // MARK: point for agent
+
+    private func capturePoint(after delay: Double) {
+        guard !model.capturingPoint else { return }
+        guard #available(macOS 14.0, *) else {
+            model.pointStatus = "Point capture requires macOS 14 or later."; return
+        }
+        model.capturingPoint = true
+        model.pointStatus = delay > 0 ? "Move your mouse to the spot — capturing in 3 seconds…" : "Capturing…"
+        panel.orderOut(nil)
+        DispatchQueue.main.asyncAfter(deadline: .now() + delay) { [weak self] in
+            Task { @MainActor [weak self] in
+                guard let self else { return }
+                defer { self.model.capturingPoint = false }
+                do {
+                    self.model.lastPoint = try await PointCapture.capture()
+                    self.model.pointStatus = "Point saved. Ask your agent to read your latest point."
+                    self.status.button?.toolTip = "Point saved — ⌃⌥P captures another spot"
+                } catch {
+                    let code = (error as NSError).code
+                    self.model.pointStatus = code == -3801
+                        ? "Screen Recording permission is required. Enable Screen Pointer in System Settings, then try again."
+                        : "Capture failed (code \(code)). Check Screen Recording permission and try again."
+                    self.showPanel()
+                }
+            }
+        }
+    }
+
+    private func copyPointPrompt() {
+        guard let url = model.lastPoint else { return }
+        NSPasteboard.general.clearContents()
+        NSPasteboard.general.setString("Look at my latest Screen Pointer capture using the latest_point MCP tool. The yellow marker is the spot I mean. If the tool is unavailable, inspect the local image at " + url.path + ". Tell me what is at that spot before making changes.", forType: .string)
+        model.pointStatus = "Agent prompt copied. Paste it into your coding agent."
     }
 
     // MARK: recording

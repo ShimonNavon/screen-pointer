@@ -27,6 +27,31 @@ screenshot.
 Screen Pointer is a normal window at floating level. The ring on your cursor, the arrows you draw and the notes you
 pin are all in the picture. It also never takes keyboard focus, so you can keep typing while you point.
 
+## Point something out to your coding agent
+
+The ring alone does not communicate with an agent. Use the explicit capture workflow:
+
+1. Open Screen Pointer. You can leave **Highlight cursor** and **Draw over the screen** off.
+2. Put your mouse over the thing you mean and press **Control–Option–P**. Alternatively, choose **Capture in 3 seconds**, then move the mouse to the target.
+3. Ask your agent: **“Look at my latest point and tell me what I’m pointing at.”**
+4. After the agent identifies it, describe the change you want. **Copy agent prompt** prepares a message with the tool name and local image fallback; it does not send a message automatically.
+
+A screenshot of up to 960 × 640 display points is saved locally with a fixed yellow marker. It uses the display containing the pointer and records top-left image coordinates, timestamp and foreground application. The moving ring and Screen Pointer panel are excluded. Existing drawn annotations are also excluded from this cropped agent capture; use recordings for annotated walkthroughs.
+
+Captures require **macOS 14+** and Screen Recording permission for Screen Pointer under System Settings → Privacy & Security → Screen & System Audio Recording. There is no always-on screen stream, network listener or background capture. Images remain in `~/Library/Application Support/Screen Pointer/Points/` until you remove them. When an agent reads one, the image becomes part of that agent’s conversation and follows that provider’s data handling.
+
+### Agent connection
+
+`tools/point_mcp.py` is a dependency-free Python 3 MCP stdio server. It exposes one read-only tool, `latest_point`, returning the marked PNG plus context. It cannot take screenshots or read arbitrary paths. Failed/in-progress captures are rejected. Captures older than two minutes require the explicit `allow_older` option.
+
+Codex setup (configured on Simon’s Mac):
+
+```sh
+codex mcp add screen-pointer -- /opt/homebrew/bin/python3 /Users/simon/Developer/screen-pointer/tools/point_mcp.py
+```
+
+Restart the MCP connection/client if it was already running when added. Other MCP-compatible coding agents can run the same Python command. No API key is required. Until the MCP tool is available, the copied prompt includes the saved PNG path for agents with local image-reading tools.
+
 ## What it does
 
 | | |
@@ -94,3 +119,7 @@ Two things that bit us, kept as guard rails in the code:
 ## License
 
 MIT.
+
+## Focused checks
+
+`swiftc -O -o /tmp/screen-pointer-check Sources/*.swift` checks the native build. `python3 -m unittest discover -s tests` checks capture freshness, failed captures, image delivery and path confinement. The app must also be tested interactively with Screen Recording permission; compilation alone does not prove screen capture works.
