@@ -1,0 +1,131 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Screen Pointer — point at anything on your Mac</title>
+<meta name="description" content="A menu-bar pointer for macOS: a ring on the cursor that shows up in screenshots and screen recordings. Draw and record from the same panel.">
+<link rel="icon" href="data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 64 64'%3E%3Ccircle cx='32' cy='32' r='22' fill='none' stroke='%23f5c518' stroke-width='7'/%3E%3C/svg%3E">
+<style>
+  :root{
+    --bg:#0b0e13; --panel:#111720; --line:#212a36; --ink:#e9edf5; --muted:#8e99a8;
+    --amber:#f5c518; --amber-ink:#1a1300; --radius:16px;
+  }
+  *{box-sizing:border-box}
+  html,body{margin:0;background:var(--bg);color:var(--ink);
+    font:16px/1.6 -apple-system,BlinkMacSystemFont,"SF Pro Text",Helvetica,Arial,sans-serif;
+    -webkit-font-smoothing:antialiased}
+  body{background:radial-gradient(1100px 620px at 22% -6%,#17212f 0%,#0b0e13 58%)}
+  .wrap{max-width:1060px;margin:0 auto;padding:0 24px}
+  nav{display:flex;align-items:center;gap:14px;padding:22px 0}
+  nav .mark{width:26px;height:26px;border-radius:50%;border:4px solid var(--amber);box-shadow:0 0 0 6px rgba(245,197,24,.12)}
+  nav b{font-size:15px;letter-spacing:-.01em}
+  nav .sp{flex:1}
+  nav a{color:var(--muted);text-decoration:none;font-size:14px;padding:8px 12px;border-radius:9px}
+  nav a:hover{color:var(--ink);background:#151c26}
+  header{padding:34px 0 10px}
+  .eyebrow{color:var(--amber);font-size:12px;font-weight:700;letter-spacing:.16em;text-transform:uppercase}
+  h1{font-size:clamp(38px,6vw,66px);line-height:1.04;letter-spacing:-.035em;margin:14px 0 16px;max-width:16ch}
+  .lead{font-size:clamp(17px,2.1vw,21px);color:#a9b3c1;max-width:60ch;margin:0 0 26px}
+  .cta{display:flex;gap:12px;flex-wrap:wrap;margin-bottom:34px}
+  .btn{display:inline-flex;align-items:center;gap:9px;padding:13px 20px;border-radius:12px;text-decoration:none;
+    font-weight:650;font-size:15px;border:1px solid #2c3644;color:#dfe6f1;background:#161d27;transition:.15s}
+  .btn:hover{transform:translateY(-1px)}
+  .btn.primary{background:var(--amber);color:var(--amber-ink);border-color:var(--amber)}
+  .btn.primary:hover{background:#ffd83d}
+  .shot{border:1px solid var(--line);border-radius:var(--radius);overflow:hidden;box-shadow:0 40px 110px rgba(0,0,0,.55)}
+  .shot img{display:block;width:100%;height:auto}
+  section{padding:64px 0}
+  h2{font-size:clamp(24px,3vw,34px);letter-spacing:-.02em;margin:0 0 10px}
+  .sub{color:var(--muted);margin:0 0 30px;max-width:62ch}
+  .grid{display:grid;grid-template-columns:repeat(auto-fit,minmax(240px,1fr));gap:16px}
+  .card{background:var(--panel);border:1px solid var(--line);border-radius:var(--radius);padding:20px}
+  .card h3{margin:0 0 6px;font-size:15px}
+  .card p{margin:0;color:var(--muted);font-size:14.5px}
+  .keys{display:grid;gap:10px;grid-template-columns:repeat(auto-fit,minmax(220px,1fr))}
+  .key{display:flex;align-items:center;gap:12px;background:var(--panel);border:1px solid var(--line);
+       border-radius:12px;padding:14px 16px}
+  kbd{background:#1b2230;border:1px solid #2c3644;border-bottom-width:2px;border-radius:7px;
+      padding:4px 8px;font:13px ui-monospace,SFMono-Regular,Menlo,monospace;color:#e6ecf5;white-space:nowrap}
+  .key span{color:var(--muted);font-size:14px}
+  pre{background:#0e141c;border:1px solid var(--line);border-radius:12px;padding:16px 18px;overflow:auto;
+      font:13.5px/1.6 ui-monospace,SFMono-Regular,Menlo,monospace;color:#cfd8e6}
+  footer{border-top:1px solid var(--line);margin-top:20px;padding:26px 0 50px;color:var(--muted);font-size:13.5px;
+    display:flex;gap:14px;flex-wrap:wrap;align-items:center}
+  footer a{color:var(--ink);text-decoration:none}
+  .pill{font-size:12px;border:1px solid var(--line);border-radius:999px;padding:3px 10px;color:var(--muted)}
+  @media (prefers-reduced-motion:reduce){*{transition:none!important}}
+</style>
+</head>
+<body>
+<div class="wrap">
+  <nav>
+    <span class="mark" aria-hidden="true"></span>
+    <b>Screen Pointer</b>
+    <span class="sp"></span>
+    <a href="#how">How it works</a>
+    <a href="#install">Install</a>
+    <a href="https://github.com/ShimonNavon/screen-pointer">GitHub ↗</a>
+  </nav>
+
+  <header>
+    <div class="eyebrow">macOS · menu bar</div>
+    <h1>Point at anything. They can actually see it.</h1>
+    <p class="lead">A warm ring around your cursor that survives screenshots and screen recordings — then draw on the
+      screen and record it, without leaving your keyboard.</p>
+    <div class="cta">
+      <a class="btn primary" href="#install">Install it</a>
+      <a class="btn" href="https://github.com/ShimonNavon/screen-pointer">Read the code</a>
+    </div>
+    <div class="shot"><img src="shot.png" width="1600" height="900"
+      alt="Screen Pointer panel open, with an arrow drawn and the yellow ring around a point on screen"></div>
+  </header>
+
+  <section id="how">
+    <h2>Why it exists</h2>
+    <p class="sub">Drawing apps like Annotate are built to stay out of screen capture — so the person on the other end
+      sees a clean screen no matter what you draw. This one is a normal window: the ring, the arrows and the notes are
+      all in the picture.</p>
+    <div class="grid">
+      <div class="card"><h3>Never steals the keyboard</h3><p>Toggle it from any app. You keep typing while the ring
+        sits on the thing you mean.</p></div>
+      <div class="card"><h3>Clicks pass through</h3><p>The overlay ignores the mouse until you ask it to draw, so it is
+        never in the way.</p></div>
+      <div class="card"><h3>Every desktop, every display</h3><p>It follows you across Spaces, and it stays out of
+        Mission Control's thumbnails.</p></div>
+      <div class="card"><h3>Record what you point at</h3><p>One hotkey starts and stops a clip; the ring is part of the
+        recording.</p></div>
+    </div>
+  </section>
+
+  <section>
+    <h2>Three keys</h2>
+    <p class="sub">Everything lives on the keyboard, in the menu bar, or in one small panel.</p>
+    <div class="keys">
+      <div class="key"><kbd>⌃⌥H</kbd><span>Highlight the cursor</span></div>
+      <div class="key"><kbd>⌃⌥D</kbd><span>Draw: arrows, pen, highlighter, boxes</span></div>
+      <div class="key"><kbd>⌃⌥R</kbd><span>Start / stop recording</span></div>
+    </div>
+  </section>
+
+  <section id="install">
+    <h2>Install</h2>
+    <p class="sub">Needs macOS 13 or newer. Build it locally — it is one Swift file and a small app bundle.</p>
+    <pre>git clone https://github.com/ShimonNavon/screen-pointer
+cd screen-pointer
+./build.sh
+open "$HOME/Applications/Screen Pointer.app"</pre>
+    <p class="sub" style="margin-top:18px">The first recording asks for Screen Recording permission. The highlight
+      itself needs no permissions at all.</p>
+  </section>
+
+  <footer>
+    <span>© <span id="yr">2026</span> Simon Navon</span>
+    <span class="pill">Made for one specific job</span>
+    <span class="sp" style="flex:1"></span>
+    <a href="https://github.com/ShimonNavon/screen-pointer">github.com/ShimonNavon/screen-pointer</a>
+  </footer>
+</div>
+<script>document.getElementById('yr').textContent = new Date().getFullYear()</script>
+</body>
+</html>

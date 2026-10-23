@@ -1,80 +1,96 @@
+<div align="center">
+
+<img src="site/shot.png" alt="Screen Pointer: a yellow ring on the cursor, an arrow drawn on screen, and the control panel" width="820">
+
 # Screen Pointer
 
-A tiny macOS menu-bar app that puts a ring around your cursor — so someone else (a person on a call, an
-agent looking at screenshots) can see exactly what you are pointing at.
+**A ring around your cursor that actually shows up in screenshots and recordings.**
 
-Built because screen-drawing overlays like Annotate are deliberately excluded from screen capture: the
-person on the other end sees a clean screen no matter what you draw. This one is a normal window, so it
-shows up in screenshots and recordings.
+[![macOS](https://img.shields.io/badge/macOS-13%2B-000000?logo=apple&logoColor=white)](#install)
+[![Swift](https://img.shields.io/badge/Swift-6-F05138?logo=swift&logoColor=white)](Sources/main.swift)
+[![No dependencies](https://img.shields.io/badge/dependencies-none-2ea44f)](#how-it-is-built)
+[![License](https://img.shields.io/badge/license-MIT-2ea44f)](LICENSE)
+[![Website](https://img.shields.io/badge/website-screen--pointer.navonsimon.com-f5c518)](https://screen-pointer.navonsimon.com/)
+
+[Website](https://screen-pointer.navonsimon.com/) · [Install](#install) · [Hotkeys](#hotkeys) · [Why](#why)
+
+</div>
+
+---
+
+## Why
+
+Every screen-drawing app (Annotate, ScreenBrush, Skitch) is built to stay **out** of screen capture. That is the
+right default for a call — and exactly wrong when the person you are pointing at is an agent looking at a
+screenshot.
+
+Screen Pointer is a normal window at floating level. The ring on your cursor, the arrows you draw and the notes you
+pin are all in the picture. It also never takes keyboard focus, so you can keep typing while you point.
 
 ## What it does
 
-- **⌃⌥H** toggles the highlight from any app, without taking keyboard focus — you can keep typing while
-  the ring is on screen.
-- A warm yellow ring follows the cursor on every desktop (Spaces) and every display.
-- Optional spotlight: dim everything except a circle around the pointer (menu bar → "Dim the rest").
-- Clicks pass straight through the overlay; it is never in the way.
-- No accessibility or screen-recording permission needed.
+| | |
+| --- | --- |
+| 🎯 **Highlight** | A warm ring follows the cursor on every display and every Space. |
+| ✏️ **Annotate** | Hand the mouse to the overlay and draw arrows, freehand, highlighter or boxes in four colours. |
+| ⏺ **Record** | One hotkey starts and stops a clip; the ring and the drawings are in it. |
+| 🌘 **Spotlight** | Optionally dim everything except a circle around the pointer. |
+| 🧠 **Stays out of the way** | Clicks pass through, it is never in Mission Control, and it does not steal focus. |
 
-## Annotating
+## Hotkeys
 
-- **⌃⌥D** turns the overlay into a drawing surface; the menu's **Tool** picks Arrow, Pen, Highlight
-  or Rectangle. Draw over the screen, then **⌃⌥D** again to hand the mouse back to your apps.
-- Annotations stay on screen (and in recordings) until "Clear annotations".
-- While annotating, clicks go to the overlay, not to the app underneath — that is the point.
+| Shortcut | Action |
+| --- | --- |
+| <kbd>⌃</kbd><kbd>⌥</kbd><kbd>H</kbd> | Highlight the cursor |
+| <kbd>⌃</kbd><kbd>⌥</kbd><kbd>D</kbd> | Draw over the screen |
+| <kbd>⌃</kbd><kbd>⌥</kbd><kbd>R</kbd> | Start / stop recording |
 
-## Recording
+Everything else lives in the menu-bar panel: tool, colour, width, Undo, Clear, recorder timer, and the last clip.
 
-- **⌃⌥R** starts recording the screen and **⌃⌥R** again stops it (menu bar shows ⏺ while recording).
-- There is no length limit: it records until you stop it, bounded only by disk. Expect roughly
-  1 GB per hour at 1080p (a 5-second clip is about 1.4 MB).
-- Clips land in `~/Movies/Screen Pointer/Screen <date> <time>.mov`; the newest path is also written to
-  `last-recording.txt` next to them, so an agent can pick it up without guessing.
-- The ring is part of the recording, so pointing at something while recording is visible afterwards.
-- The first recording may ask for Screen Recording permission for Screen Pointer.
+## Install
 
-Frames from a clip, for anyone who reads images rather than video:
+```bash
+git clone https://github.com/ShimonNavon/screen-pointer
+cd screen-pointer
+./build.sh                     # compiles and installs ~/Applications/Screen Pointer.app
+open "$HOME/Applications/Screen Pointer.app"
+```
+
+Requirements: macOS 13+, Xcode command-line tools. The first recording asks for Screen Recording permission; the
+highlight needs none.
+
+## Recordings
+
+Clips land in `~/Movies/Screen Pointer/Screen <date> <time>.mov`, with the newest path in `last-recording.txt` beside
+them so a script (or an agent) can pick it up without guessing. There is no length limit — roughly 1 GB per hour at
+1080p. For anyone who reads images rather than video:
 
 ```bash
 ffmpeg -i "$(cat ~/Movies/'Screen Pointer'/last-recording.txt)" -vf fps=1 /tmp/frames/f%02d.png
 ```
 
-## Install
-
-```bash
-./build.sh          # compiles and installs ~/Applications/Screen Pointer.app
-open "$HOME/Applications/Screen Pointer.app"
-```
-
-The app lives in the menu bar as ◉ (hollow ○ when off).
-
-## The panel
-
-Click the menu-bar icon for a panel: highlight on/off, "Dim the rest", a drawing surface with
-Arrow / Pen / Highlight / Box, colour swatches and a width slider, Undo and Clear, and the recorder
-with its elapsed timer plus a shortcut to the last clip. Every setting is remembered between launches.
-
-## Shortcuts
-
-| Shortcut | What it does |
-| --- | --- |
-| ⌃⌥H | Highlight the cursor |
-| ⌃⌥D | Hand the mouse to the overlay for drawing |
-| ⌃⌥R | Start / stop a recording |
-
 ## How it is built
 
-One Swift file, no dependencies: `Sources/main.swift`.
+One Swift file, `Sources/main.swift`, no dependencies.
 
-- A borderless, non-activating `NSWindow` per screen at `.floating` level, `ignoresMouseEvents` so clicks
-  land on whatever is underneath.
-- `collectionBehavior = [.canJoinAllSpaces, .fullScreenAuxiliary, .stationary]` so the pointer follows you
-  across desktops.
-- A 60 Hz timer redraws the ring at `NSEvent.mouseLocation`.
-- A Carbon global hotkey (`RegisterEventHotKey`) toggles it from any app.
+- A borderless, non-activating `NSWindow` per screen at `.floating` level with `ignoresMouseEvents`, so clicks reach
+  whatever is underneath until draw mode is on.
+- `collectionBehavior = [.canJoinAllSpaces, .fullScreenAuxiliary, .stationary]` keeps the ring with you across Spaces.
+- A 60 Hz timer redraws the ring and any in-progress shape at `NSEvent.mouseLocation`.
+- Carbon `RegisterEventHotKey` for the three global hotkeys.
+- Recording shells out to `/usr/sbin/screencapture -v`, which writes QuickTime directly — no AVFoundation plumbing.
 
-## Notes
+Two things that bit us, kept as guard rails in the code:
 
-- Kept at `.floating` level on purpose: at `.statusBar` it outranked system UI.
-- Avoid `.transient`: it excludes the window from Mission Control, but macOS then also hides it on the
-  active space.
+- `.statusBar` level outranks system UI; `.floating` is the right level.
+- `.transient` excludes a window from Mission Control **and** hides it on the active Space. Not what you want here.
+
+## Limits
+
+- macOS only. The Windows/Linux equivalent is a different program.
+- The overlay is one bitmap per screen; very large annotation sets are not designed for.
+- Global hotkeys are fixed (⌃⌥H / ⌃⌥D / ⌃⌥R); there is no rebinding UI yet.
+
+## License
+
+MIT.
