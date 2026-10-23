@@ -128,3 +128,13 @@ Focused tests cover fresh/stale and failed point captures, ready/failed recordin
 `deploy/deploy.sh` publishes the site to the Kubernetes cluster: namespace `screen-pointer`, nginx, NodePort 30099. Public promotional/demo assets are stored on a 5 GiB local-path PVC mounted at `/media/`; HTML uses a ConfigMap. The companion case-study page and featured entry live in `~/Developer/my-projects`.
 
 The public page currently has no playable demo because capture is blocked. After recording a safe fixture walkthrough, inspect it for private information, convert it to a browser-compatible MP4, publish it under `site/media/`, and replace the preview notice with the verified video and accurate review outcome. Never publish personal recordings automatically.
+
+## Stable local Mac signing
+
+`build.sh` now signs with a persistent, app-specific local certificate instead of an ad-hoc signature. `tools/sign_app.py` creates the certificate once in an isolated keychain under `~/Library/Application Support/Screen Pointer/Signing/`. The private key remains in that keychain; its local unlock secret is stored beside it with mode 0600, inside a 0700 directory. Do not commit, publish or delete that directory. Losing it requires a new identity and another permission approval.
+
+The designated requirement binds both the bundle ID and signing certificate. Updates retain that requirement even when executable/resources change. Signing fails explicitly; there is no unsigned/ad-hoc fallback. The installer signs and verifies a staged bundle before installing, and requires the running app to be quit first. It does not modify certificate trust settings or grant screen access.
+
+This is a locally signed development app, not an Apple-notarized public release. A change from the old ad-hoc identity needs one fresh macOS Screen Recording approval. Stable-signature verification is separate from testing actual capture and agent review.
+
+References: [Apple code-signing requirements](https://developer.apple.com/library/archive/technotes/tn2206/) and [Apple DTS on ad-hoc signing and capture permissions](https://developer.apple.com/forums/thread/819406).
