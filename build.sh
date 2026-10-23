@@ -7,6 +7,8 @@ APP="$HOME/Applications/Screen Pointer.app"
 swiftc -O -o screen-pointer Sources/*.swift
 mkdir -p "$APP/Contents/MacOS"
 cp screen-pointer "$APP/Contents/MacOS/screen-pointer"
+mkdir -p "$APP/Contents/Resources"
+cp tools/send_review.py tools/recordings.py "$APP/Contents/Resources/"
 cp Info.plist "$APP/Contents/Info.plist"
 codesign --force --sign - "$APP" >/dev/null 2>&1 || true
 echo "installed $APP"

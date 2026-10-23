@@ -19,6 +19,13 @@ final class AppModel: ObservableObject {
     @Published var lineWidth = 4.0 { didSet { save("width", lineWidth); changed() } }
     @Published var recording = false
     @Published var elapsed = 0.0
+    @Published var preparingReview = false
+    @Published var sessionStatus = "Record a walkthrough, mark it, then send it to your agent."
+    @Published var autoReview = UserDefaults.standard.object(forKey: "sp.autoReview") as? Bool ?? true {
+        didSet { UserDefaults.standard.set(autoReview, forKey: "sp.autoReview") }
+    }
+    @Published var lastSession: URL?
+    @Published var reviewing = false
     @Published var lastClip: String?
     @Published var pointStatus = "Point at something and press ⌃⌥P"
     @Published var capturingPoint = false
@@ -30,12 +37,12 @@ final class AppModel: ObservableObject {
         ("Yellow", .systemYellow), ("Red", .systemRed),
         ("Green", .systemGreen), ("Blue", .systemBlue),
     ]
-    var color: NSColor { Self.colors[min(colorIndex, Self.colors.count - 1)].1 }
+    var color: NSColor { Self.colors[max(0, min(colorIndex, Self.colors.count - 1))].1 }
 
     init() {
         let d = UserDefaults.standard
         highlightOn = d.bool(forKey: "sp.highlight")
-        drawMode = d.bool(forKey: "sp.draw")
+        drawMode = false // Never intercept clicks automatically on launch.
         spotlight = d.object(forKey: "sp.spotlight") as? Bool ?? false
         toolName = d.string(forKey: "sp.tool") ?? "arrow"
         colorIndex = d.integer(forKey: "sp.color")
@@ -58,11 +65,16 @@ final class HighlightView: NSView {
 
     weak var model: AppModel?
     var shapes: [Shape] = []
+    var labels: [(CGPoint, String)] = []
+    var onAnnotation: ((String) -> Void)?
     private var current: Shape?
 
     override var isOpaque: Bool { false }
 
-    private var mouse: CGPoint { convert(NSEvent.mouseLocation, from: nil) }
+    private var mouse: CGPoint {
+        guard let window else { return .zero }
+        return convert(window.convertPoint(fromScreen: NSEvent.mouseLocation), from: nil)
+    }
 
     override func draw(_ dirtyRect: NSRect) {
         guard let ctx = NSGraphicsContext.current?.cgContext, let model else { return }
@@ -81,6 +93,17 @@ final class HighlightView: NSView {
         for shape in shapes { stroke(shape, in: ctx) }
         if let current { stroke(current, in: ctx) }
 
+        for (point, text) in labels {
+            let width = min(320.0, max(100.0, bounds.width - point.x - 20))
+            let attributes: [NSAttributedString.Key: Any] = [.font: NSFont.systemFont(ofSize: 16, weight: .semibold), .foregroundColor: NSColor.black]
+            let value = NSAttributedString(string: text, attributes: attributes)
+            let measured = value.boundingRect(with: CGSize(width: width - 24, height: 200), options: [.usesLineFragmentOrigin])
+            let rect = CGRect(x: min(max(8, point.x + 20), bounds.width - width - 8), y: max(8, min(point.y - measured.height - 24, bounds.height - measured.height - 32)), width: width, height: min(220, measured.height + 24))
+            NSColor.systemYellow.withAlphaComponent(0.96).setFill()
+            NSBezierPath(roundedRect: rect, xRadius: 9, yRadius: 9).fill()
+            value.draw(with: rect.insetBy(dx: 12, dy: 12), options: [.usesLineFragmentOrigin])
+        }
+        guard model.highlightOn || model.drawMode else { return }
         let p = mouse
         let ring = CGRect(x: p.x - 44, y: p.y - 44, width: 88, height: 88)
         ctx.setStrokeColor(model.color.withAlphaComponent(0.95).cgColor)
@@ -91,7 +114,7 @@ final class HighlightView: NSView {
         ctx.strokeEllipse(in: ring.insetBy(dx: -6, dy: -6))
     }
 
-    func clearShapes() { shapes.removeAll(); current = nil; needsDisplay = true }
+    func clearShapes() { shapes.removeAll(); labels.removeAll(); current = nil; needsDisplay = true }
     func undo() { if !shapes.isEmpty { shapes.removeLast(); needsDisplay = true } }
 
     private func stroke(_ shape: Shape, in ctx: CGContext) {
@@ -149,8 +172,13 @@ final class HighlightView: NSView {
 
     override func mouseUp(with event: NSEvent) {
         guard model?.drawMode == true else { return }
-        if let shape = current, shape.points.count > 1 { shapes.append(shape) }
+        if let shape = current, shape.points.count > 1 {
+            shapes.append(shape)
+            onAnnotation?(shape.kind.rawValue)
+        }
         current = nil
+        // A completed stroke always restores normal clicks immediately.
+        model?.drawMode = false
         needsDisplay = true
     }
 
@@ -168,6 +196,9 @@ final class PointerWindow: NSWindow {
 
 struct MenuView: View {
     @ObservedObject var model: AppModel
+    let onNote: () -> Void
+    let onReview: () -> Void
+    let onCopyReview: () -> Void
     let onCapture: () -> Void
     let onCopyPoint: () -> Void
     let onQuit: () -> Void
@@ -183,6 +214,27 @@ struct MenuView: View {
                 Text(statusText).font(.system(size: 11, weight: .medium)).foregroundStyle(.secondary)
             }
 
+            HStack {
+                Button(model.recording ? "Stop recording" : "Record walkthrough") {
+                    NotificationCenter.default.post(name: model.recording ? .stopRecording : .startRecording, object: nil)
+                }.disabled(model.preparingReview)
+                if model.recording { Text(time(model.elapsed)).monospacedDigit().foregroundStyle(.secondary) }
+            }.buttonStyle(.borderedProminent)
+            Text(model.sessionStatus).font(.system(size: 11)).foregroundStyle(.secondary).fixedSize(horizontal: false, vertical: true)
+            Text(model.drawMode ? "Draw one mark. Normal clicks resume after the stroke." : "Normal clicks pass through. Switch windows and work as usual.")
+                .font(.system(size: 11)).foregroundStyle(.secondary).fixedSize(horizontal: false, vertical: true)
+            HStack {
+                Button("Add note", action: onNote).disabled(!model.recording)
+                if model.lastClip != nil { Button("Show recording", action: onOpenClip) }
+            }
+            if model.lastSession != nil {
+                HStack {
+                    Button("Copy review prompt", action: onCopyReview)
+                    Button("Review in OpenCode", action: onReview).disabled(model.reviewing || model.preparingReview || model.recording)
+                }
+            }
+            Toggle("Review in OpenCode after stopping", isOn: $model.autoReview).font(.system(size: 11))
+            Divider()
             Text("Show your agent a specific spot").font(.system(size: 12, weight: .semibold))
             Text("Point with your mouse, press ⌃⌥P, then ask your agent to look at your latest point.")
                 .font(.system(size: 12)).foregroundStyle(.secondary)
@@ -232,26 +284,13 @@ struct MenuView: View {
 
             Divider()
 
-            HStack(spacing: 8) {
-                Button(role: nil, action: {
-                    model.recording ? NotificationCenter.default.post(name: .stopRecording, object: nil)
-                                    : NotificationCenter.default.post(name: .startRecording, object: nil)
-                }) {
-                    Label(model.recording ? "Stop · \(time(model.elapsed))" : "Record screen",
-                          systemImage: model.recording ? "stop.circle.fill" : "record.circle")
-                }
-                .tint(model.recording ? .red : .accentColor)
-                if model.lastClip != nil { Button("Last clip", action: onOpenClip) }
-            }
-            .buttonStyle(.bordered)
-
-            Text("⌃⌥H highlight · ⌃⌥D draw · ⌃⌥R record")
+            Text("⌃⌥R record · ⌃⌥D draw one mark · ⌃⌥N note")
                 .font(.system(size: 11)).foregroundStyle(.tertiary)
             Divider()
             HStack { Spacer(); Button("Quit", action: onQuit) }
         }
         .padding(16)
-        .frame(width: 300)
+        .frame(width: 360)
     }
 
     private var statusText: String {
@@ -284,6 +323,11 @@ final class AppDelegate: NSObject, NSApplicationDelegate {
     private var recordKey: EventHotKeyRef?
     private var drawKey: EventHotKeyRef?
     private var pointKey: EventHotKeyRef?
+    private var noteKey: EventHotKeyRef?
+    private var clearKey: EventHotKeyRef?
+    private var activeSession: RecordingSession?
+    private var notePanel: NSPanel?
+    private var reviewProcess: Process?
     private var recorder: Process?
     private var recordingURL: URL?
     private var recordStarted = Date()
@@ -307,11 +351,14 @@ final class AppDelegate: NSObject, NSApplicationDelegate {
 
         let host = NSHostingController(rootView: MenuView(
             model: model,
+            onNote: { [weak self] in self?.addNote() },
+            onReview: { [weak self] in self?.reviewInOpenCode() },
+            onCopyReview: { [weak self] in self?.copyReviewPrompt() },
             onCapture: { [weak self] in self?.capturePoint(after: 3) },
             onCopyPoint: { [weak self] in self?.copyPointPrompt() },
             onQuit: { NSApp.terminate(nil) },
             onOpenClip: { [weak self] in self?.openLastClip() },
-            onClear: { [weak self] in self?.allViews { $0.clearShapes() } },
+            onClear: { [weak self] in self?.clearAnnotations() },
             onUndo: { [weak self] in self?.allViews { $0.undo() } }
         ))
         let panel = NSPanel(contentViewController: host)
@@ -336,6 +383,15 @@ final class AppDelegate: NSObject, NSApplicationDelegate {
         model.lastClip = try? String(contentsOf: Self.clips.appendingPathComponent("last-recording.txt"),
                                      encoding: .utf8)
 
+        if let data = try? Data(contentsOf: RecordingSession.root.appendingPathComponent("latest.json")),
+           let latest = try? JSONSerialization.jsonObject(with: data) as? [String: Any],
+           latest["state"] as? String == "ready", let id = latest["id"] as? String, UUID(uuidString: id) != nil {
+            let folder = RecordingSession.root.appendingPathComponent(id)
+            if FileManager.default.fileExists(atPath: folder.appendingPathComponent("notes.md").path) {
+                model.lastSession = folder
+                model.sessionStatus = "Your latest saved walkthrough is ready to review."
+            }
+        }
         let env = ProcessInfo.processInfo.environment
         if env["PTR_ON"] == "1" { model.highlightOn = true }
         if env["PTR_DRAW"] == "1" { model.drawMode = true }
@@ -352,6 +408,12 @@ final class AppDelegate: NSObject, NSApplicationDelegate {
         DispatchQueue.main.async { [weak self] in self?.showPanel() }
     }
 
+    func applicationShouldTerminate(_ sender: NSApplication) -> NSApplication.TerminateReply {
+        if model.recording { stopRecording(); return .terminateCancel }
+        if model.preparingReview || model.reviewing { return .terminateCancel }
+        return .terminateNow
+    }
+
     func applicationShouldHandleReopen(_ sender: NSApplication, hasVisibleWindows flag: Bool) -> Bool {
         showPanel()
         return true
@@ -360,7 +422,7 @@ final class AppDelegate: NSObject, NSApplicationDelegate {
     // MARK: state -> UI
 
     private func applyModel() {
-        if model.highlightOn || model.drawMode { showWindows() } else { hideWindows() }
+        if model.highlightOn || model.drawMode || model.recording || windows.contains(where: { (($0.contentView as? HighlightView)?.shapes.isEmpty == false) || (($0.contentView as? HighlightView)?.labels.isEmpty == false) }) { showWindows() } else { hideWindows() }
         windows.forEach { w in
             w.ignoresMouseEvents = !model.drawMode
             w.contentView?.needsDisplay = true
@@ -399,6 +461,7 @@ final class AppDelegate: NSObject, NSApplicationDelegate {
             w.collectionBehavior = [.canJoinAllSpaces, .fullScreenAuxiliary, .stationary]
             let v = HighlightView(frame: screen.frame)
             v.model = model
+            v.onAnnotation = { [weak self] kind in self?.activeSession?.add(kind: "annotation", text: kind, point: NSEvent.mouseLocation) }
             w.contentView = v
             w.orderFrontRegardless()
             windows.append(w)
@@ -439,6 +502,8 @@ final class AppDelegate: NSObject, NSApplicationDelegate {
                 case 2: delegate.startRecording()          // ⌃⌥R (toggles in its own handler)
                 case 3: delegate.toggleDraw()
                 case 4: delegate.capturePoint(after: 0)
+                case 5: delegate.addNote()
+                case 6: delegate.clearAnnotations()
                 default: delegate.toggleHighlight()
                 }
             }
@@ -454,6 +519,8 @@ final class AppDelegate: NSObject, NSApplicationDelegate {
                             EventHotKeyID(signature: sig, id: 3), GetApplicationEventTarget(), 0, &drawKey)
         RegisterEventHotKey(UInt32(kVK_ANSI_P), UInt32(controlKey | optionKey),
                             EventHotKeyID(signature: sig, id: 4), GetApplicationEventTarget(), 0, &pointKey)
+        RegisterEventHotKey(UInt32(kVK_ANSI_N), UInt32(controlKey | optionKey), EventHotKeyID(signature: sig, id: 5), GetApplicationEventTarget(), 0, &noteKey)
+        RegisterEventHotKey(UInt32(kVK_ANSI_C), UInt32(controlKey | optionKey), EventHotKeyID(signature: sig, id: 6), GetApplicationEventTarget(), 0, &clearKey)
     }
 
     private func toggleHighlight() {
@@ -505,19 +572,34 @@ final class AppDelegate: NSObject, NSApplicationDelegate {
 
     @objc func startRecording() {
         if recorder != nil { stopRecording(); return }
-        let f = DateFormatter(); f.dateFormat = "yyyy-MM-dd HH.mm.ss"
-        let url = Self.clips.appendingPathComponent("Screen \(f.string(from: Date())).mov")
-        let p = Process()
-        p.executableURL = URL(fileURLWithPath: "/usr/sbin/screencapture")
-        p.arguments = ["-v", "-x", url.path]
-        p.terminationHandler = { [weak self] _ in DispatchQueue.main.async { self?.finishedRecording() } }
+        guard !model.preparingReview else { return }
+        guard CGPreflightScreenCaptureAccess() else {
+            CGRequestScreenCaptureAccess()
+            model.sessionStatus = "Enable Screen Recording for Screen Pointer in System Settings, then try again."
+            showPanel(); return
+        }
+        let mouse = NSEvent.mouseLocation
+        let screens = NSScreen.screens
+        guard let index = screens.firstIndex(where: { NSMouseInRect(mouse, $0.frame, false) }) else { return }
         do {
+            let session = try RecordingSession(screen: screens[index], index: index + 1)
+            activeSession = session
+            model.drawMode = false
+            allViews { $0.clearShapes() }
+            let p = Process()
+            p.executableURL = URL(fileURLWithPath: "/usr/sbin/screencapture")
+            p.arguments = ["-v", "-x", "-D", String(index + 1), session.movie.path]
+            p.terminationHandler = { [weak self] process in
+                DispatchQueue.main.async { self?.finishedRecording(exitCode: process.terminationStatus) }
+            }
             try p.run()
             recorder = p
-            recordingURL = url
-            recordStarted = Date()
+            recordingURL = session.movie
+            recordStarted = session.started
             model.recording = true
             model.elapsed = 0
+            model.sessionStatus = "Recording display \(index + 1). Click freely; ⌃⌥D marks, ⌃⌥N adds a note."
+            panel.orderOut(nil)
             recordTimer = Timer.scheduledTimer(withTimeInterval: 0.5, repeats: true) { [weak self] _ in
                 guard let self else { return }
                 self.model.elapsed = Date().timeIntervalSince(self.recordStarted)
@@ -525,27 +607,107 @@ final class AppDelegate: NSObject, NSApplicationDelegate {
             RunLoop.main.add(recordTimer!, forMode: .common)
             applyModel()
         } catch {
-            NSLog("Screen Pointer: cannot record: \(error)")
+            activeSession?.fail(); activeSession = nil
+            model.sessionStatus = "Recording could not start. Check permissions and available disk space."
+            showPanel()
         }
     }
 
     @objc func stopRecording() {
         guard let recorder else { return }
+        model.sessionStatus = "Finishing recording…"
+        model.drawMode = false
         recorder.interrupt()
     }
 
-    private func finishedRecording() {
-        recordTimer?.invalidate(); recordTimer = nil
-        recorder = nil
-        model.recording = false
-        if let url = recordingURL {
-            try? url.path.write(to: Self.clips.appendingPathComponent("last-recording.txt"),
-                                atomically: true, encoding: .utf8)
-            model.lastClip = url.path
-            NSLog("Screen Pointer: saved \(url.path)")
+    private func finishedRecording(exitCode: Int32) {
+        recordTimer?.invalidate(); recordTimer = nil; recorder = nil
+        model.recording = false; model.preparingReview = true
+        model.sessionStatus = "Preparing timestamped notes and review frames…"
+        notePanel?.close(); notePanel = nil
+        applyModel(); showPanel()
+        guard let session = activeSession else { model.preparingReview = false; return }
+        activeSession = nil
+        Task { @MainActor [weak self] in
+            guard let self else { return }
+            defer { self.model.preparingReview = false }
+            do {
+                try await session.finish(exitCode: exitCode)
+                self.model.lastClip = session.movie.path
+                self.model.lastSession = session.directory
+                try session.movie.path.write(to: Self.clips.appendingPathComponent("last-recording.txt"), atomically: true, encoding: .utf8)
+                self.model.sessionStatus = "Ready: \(session.frames.count) review frames, \(session.events.count) notes and marks."
+                if self.model.autoReview { self.reviewInOpenCode() }
+            } catch {
+                self.model.sessionStatus = "Recording was not usable. No review was sent. Check Screen Recording permission and try again."
+            }
         }
-        recordingURL = nil
+    }
+
+    private func clearAnnotations() {
+        allViews { $0.clearShapes() }
+        activeSession?.add(kind: "clear", text: "Cleared the on-screen annotations")
+        model.drawMode = false
         applyModel()
+    }
+
+    private func addNote() {
+        guard model.recording, notePanel == nil else { return }
+        let point = NSEvent.mouseLocation
+        let previous = NSWorkspace.shared.frontmostApplication
+        model.drawMode = false
+        let editor = NoteEditor(save: { [weak self] text in
+            guard let self else { return }
+            self.activeSession?.add(kind: "note", text: text, point: point)
+            self.allViews { view in
+                if let screen = view.window?.screen, NSMouseInRect(point, screen.frame, false) {
+                    view.labels.append((CGPoint(x: point.x - screen.frame.minX, y: point.y - screen.frame.minY), String(text.prefix(250))))
+                    view.needsDisplay = true
+                }
+            }
+            self.notePanel?.close(); self.notePanel = nil
+            previous?.activate(options: [])
+        }, cancel: { [weak self] in
+            self?.notePanel?.close(); self?.notePanel = nil
+            previous?.activate(options: [])
+        })
+        let note = NSPanel(contentViewController: NSHostingController(rootView: editor))
+        note.title = "Note for your agent"; note.styleMask = [.titled, .utilityWindow]
+        note.isReleasedWhenClosed = false; note.level = .floating
+        note.center(); note.makeKeyAndOrderFront(nil); NSApp.activate(ignoringOtherApps: true)
+        notePanel = note
+    }
+
+    private func copyReviewPrompt() {
+        guard let session = model.lastSession else { return }
+        NSPasteboard.general.clearContents()
+        NSPasteboard.general.setString("Review my Screen Pointer recording using latest_recording. Read the timestamped notes and inspect the frames. Tell me what you understood, what you suggest, and any uncertainties before making changes. Local session: " + session.path, forType: .string)
+        model.sessionStatus = "Review prompt copied. Paste it into your connected coding agent."
+    }
+
+    private func reviewInOpenCode() {
+        guard let session = model.lastSession, !model.reviewing else { return }
+        guard let script = Bundle.main.url(forResource: "send_review", withExtension: "py") else {
+            model.sessionStatus = "Review helper missing. Rebuild the app or use Copy review prompt."; return
+        }
+        let p = Process(); p.executableURL = URL(fileURLWithPath: "/usr/bin/env")
+        p.arguments = ["python3", script.path, session.path]
+        var env = ProcessInfo.processInfo.environment
+        env["PATH"] = NSHomeDirectory() + "/.opencode/bin:" + NSHomeDirectory() + "/.local/bin:/opt/homebrew/bin:/usr/local/bin:/usr/bin:/bin"
+        p.environment = env
+        let log = session.appendingPathComponent("handoff.log")
+        FileManager.default.createFile(atPath: log.path, contents: nil, attributes: [.posixPermissions: 0o600])
+        let handle = try? FileHandle(forWritingTo: log)
+        p.standardOutput = handle; p.standardError = handle
+        p.terminationHandler = { [weak self] proc in DispatchQueue.main.async {
+            self?.model.reviewing = false; self?.reviewProcess = nil
+            self?.model.sessionStatus = proc.terminationStatus == 0
+                ? "Review finished in OpenCode. Open its Screen Pointer review session."
+                : "OpenCode review did not finish. Your recording is saved; use Copy review prompt or check handoff.log."
+            try? handle?.close()
+        } }
+        do { try p.run(); reviewProcess = p; model.reviewing = true; model.sessionStatus = "OpenCode is reviewing the frames and notes…" }
+        catch { model.sessionStatus = "OpenCode could not start. Install it or use Copy review prompt." }
     }
 
     private func openLastClip() {

@@ -1,131 +1,28 @@
 <!doctype html>
 <html lang="en">
 <head>
-<meta charset="utf-8">
-<meta name="viewport" content="width=device-width, initial-scale=1">
-<title>Screen Pointer — point at anything on your Mac</title>
-<meta name="description" content="A menu-bar pointer for macOS: a ring on the cursor that shows up in screenshots and screen recordings. Draw and record from the same panel.">
+<meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1">
+<title>Screen Pointer — Show your agent what you mean</title>
+<meta name="description" content="Record your Mac, mark what matters, and leave timestamped notes for your coding agent. Screen Pointer turns a walkthrough into a visual review package.">
+<meta property="og:title" content="Screen Pointer — Show your agent what you mean"><meta property="og:description" content="A visual brief for your coding agent. Record. Mark. Explain."><meta property="og:image" content="https://screen-pointer.navonsimon.com/media/promo-recording.jpg">
 <link rel="icon" href="data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 64 64'%3E%3Ccircle cx='32' cy='32' r='22' fill='none' stroke='%23f5c518' stroke-width='7'/%3E%3C/svg%3E">
 <style>
-  :root{
-    --bg:#0b0e13; --panel:#111720; --line:#212a36; --ink:#e9edf5; --muted:#8e99a8;
-    --amber:#f5c518; --amber-ink:#1a1300; --radius:16px;
-  }
-  *{box-sizing:border-box}
-  html,body{margin:0;background:var(--bg);color:var(--ink);
-    font:16px/1.6 -apple-system,BlinkMacSystemFont,"SF Pro Text",Helvetica,Arial,sans-serif;
-    -webkit-font-smoothing:antialiased}
-  body{background:radial-gradient(1100px 620px at 22% -6%,#17212f 0%,#0b0e13 58%)}
-  .wrap{max-width:1060px;margin:0 auto;padding:0 24px}
-  nav{display:flex;align-items:center;gap:14px;padding:22px 0}
-  nav .mark{width:26px;height:26px;border-radius:50%;border:4px solid var(--amber);box-shadow:0 0 0 6px rgba(245,197,24,.12)}
-  nav b{font-size:15px;letter-spacing:-.01em}
-  nav .sp{flex:1}
-  nav a{color:var(--muted);text-decoration:none;font-size:14px;padding:8px 12px;border-radius:9px}
-  nav a:hover{color:var(--ink);background:#151c26}
-  header{padding:34px 0 10px}
-  .eyebrow{color:var(--amber);font-size:12px;font-weight:700;letter-spacing:.16em;text-transform:uppercase}
-  h1{font-size:clamp(38px,6vw,66px);line-height:1.04;letter-spacing:-.035em;margin:14px 0 16px;max-width:16ch}
-  .lead{font-size:clamp(17px,2.1vw,21px);color:#a9b3c1;max-width:60ch;margin:0 0 26px}
-  .cta{display:flex;gap:12px;flex-wrap:wrap;margin-bottom:34px}
-  .btn{display:inline-flex;align-items:center;gap:9px;padding:13px 20px;border-radius:12px;text-decoration:none;
-    font-weight:650;font-size:15px;border:1px solid #2c3644;color:#dfe6f1;background:#161d27;transition:.15s}
-  .btn:hover{transform:translateY(-1px)}
-  .btn.primary{background:var(--amber);color:var(--amber-ink);border-color:var(--amber)}
-  .btn.primary:hover{background:#ffd83d}
-  .shot{border:1px solid var(--line);border-radius:var(--radius);overflow:hidden;box-shadow:0 40px 110px rgba(0,0,0,.55)}
-  .shot img{display:block;width:100%;height:auto}
-  section{padding:64px 0}
-  h2{font-size:clamp(24px,3vw,34px);letter-spacing:-.02em;margin:0 0 10px}
-  .sub{color:var(--muted);margin:0 0 30px;max-width:62ch}
-  .grid{display:grid;grid-template-columns:repeat(auto-fit,minmax(240px,1fr));gap:16px}
-  .card{background:var(--panel);border:1px solid var(--line);border-radius:var(--radius);padding:20px}
-  .card h3{margin:0 0 6px;font-size:15px}
-  .card p{margin:0;color:var(--muted);font-size:14.5px}
-  .keys{display:grid;gap:10px;grid-template-columns:repeat(auto-fit,minmax(220px,1fr))}
-  .key{display:flex;align-items:center;gap:12px;background:var(--panel);border:1px solid var(--line);
-       border-radius:12px;padding:14px 16px}
-  kbd{background:#1b2230;border:1px solid #2c3644;border-bottom-width:2px;border-radius:7px;
-      padding:4px 8px;font:13px ui-monospace,SFMono-Regular,Menlo,monospace;color:#e6ecf5;white-space:nowrap}
-  .key span{color:var(--muted);font-size:14px}
-  pre{background:#0e141c;border:1px solid var(--line);border-radius:12px;padding:16px 18px;overflow:auto;
-      font:13.5px/1.6 ui-monospace,SFMono-Regular,Menlo,monospace;color:#cfd8e6}
-  footer{border-top:1px solid var(--line);margin-top:20px;padding:26px 0 50px;color:var(--muted);font-size:13.5px;
-    display:flex;gap:14px;flex-wrap:wrap;align-items:center}
-  footer a{color:var(--ink);text-decoration:none}
-  .pill{font-size:12px;border:1px solid var(--line);border-radius:999px;padding:3px 10px;color:var(--muted)}
-  @media (prefers-reduced-motion:reduce){*{transition:none!important}}
-</style>
-</head>
-<body>
-<div class="wrap">
-  <nav>
-    <span class="mark" aria-hidden="true"></span>
-    <b>Screen Pointer</b>
-    <span class="sp"></span>
-    <a href="#how">How it works</a>
-    <a href="#install">Install</a>
-    <a href="https://github.com/ShimonNavon/screen-pointer">GitHub ↗</a>
-  </nav>
-
-  <header>
-    <div class="eyebrow">macOS · menu bar</div>
-    <h1>Point at anything. They can actually see it.</h1>
-    <p class="lead">A warm ring around your cursor that survives screenshots and screen recordings — then draw on the
-      screen and record it, without leaving your keyboard.</p>
-    <div class="cta">
-      <a class="btn primary" href="#install">Install it</a>
-      <a class="btn" href="https://github.com/ShimonNavon/screen-pointer">Read the code</a>
-    </div>
-    <div class="shot"><img src="shot.png" width="1600" height="900"
-      alt="Screen Pointer panel open, with an arrow drawn and the yellow ring around a point on screen"></div>
-  </header>
-
-  <section id="how">
-    <h2>Why it exists</h2>
-    <p class="sub">Drawing apps like Annotate are built to stay out of screen capture — so the person on the other end
-      sees a clean screen no matter what you draw. This one is a normal window: the ring, the arrows and the notes are
-      all in the picture.</p>
-    <div class="grid">
-      <div class="card"><h3>Never steals the keyboard</h3><p>Toggle it from any app. You keep typing while the ring
-        sits on the thing you mean.</p></div>
-      <div class="card"><h3>Clicks pass through</h3><p>The overlay ignores the mouse until you ask it to draw, so it is
-        never in the way.</p></div>
-      <div class="card"><h3>Every desktop, every display</h3><p>It follows you across Spaces, and it stays out of
-        Mission Control's thumbnails.</p></div>
-      <div class="card"><h3>Record what you point at</h3><p>One hotkey starts and stops a clip; the ring is part of the
-        recording.</p></div>
-    </div>
-  </section>
-
-  <section>
-    <h2>Three keys</h2>
-    <p class="sub">Everything lives on the keyboard, in the menu bar, or in one small panel.</p>
-    <div class="keys">
-      <div class="key"><kbd>⌃⌥H</kbd><span>Highlight the cursor</span></div>
-      <div class="key"><kbd>⌃⌥D</kbd><span>Draw: arrows, pen, highlighter, boxes</span></div>
-      <div class="key"><kbd>⌃⌥R</kbd><span>Start / stop recording</span></div>
-    </div>
-  </section>
-
-  <section id="install">
-    <h2>Install</h2>
-    <p class="sub">Needs macOS 13 or newer. Build it locally — it is one Swift file and a small app bundle.</p>
-    <pre>git clone https://github.com/ShimonNavon/screen-pointer
+:root{--bg:#f6f5ef;--panel:#fff;--ink:#171b21;--mute:#5e6570;--line:#dadcd9;--accent:#ab7800;--yellow:#ffd239;--on-yellow:#201b0a;--soft:#eceee8;--shadow:#00000018;--radius:14px}
+@media(prefers-color-scheme:dark){:root{--bg:#0d1015;--panel:#151a21;--ink:#f2f3ed;--mute:#a3aab5;--line:#2a323e;--accent:#ffd239;--soft:#1b222d;--shadow:#00000040}}
+*{box-sizing:border-box}html{scroll-behavior:smooth;scroll-padding-top:30px}body{margin:0;background:var(--bg);color:var(--ink);font:16px/1.65 -apple-system,BlinkMacSystemFont,"SF Pro Text",sans-serif}a{color:inherit}button,a{touch-action:manipulation}a:focus-visible,button:focus-visible,summary:focus-visible{outline:3px solid var(--accent);outline-offset:5px}.wrap{max-width:1180px;margin:auto;padding:0 28px}nav{display:flex;align-items:center;gap:24px;padding:25px 0;border-bottom:1px solid var(--line);font-size:14px}nav .brand{font-weight:750;text-decoration:none;margin-right:auto;display:flex;gap:12px;align-items:center}.ring{width:23px;height:23px;border:4px solid var(--accent);border-radius:50%}nav a{text-decoration:none}nav a:hover{color:var(--accent)}header{padding:72px 0 0}.eyebrow{font-size:12px;font-weight:750;letter-spacing:.15em;text-transform:uppercase;color:var(--accent)}h1{font-size:clamp(44px,7.2vw,86px);line-height:1.02;letter-spacing:-.055em;max-width:860px;margin:19px 0 24px}h1 span{color:var(--accent)}.intro{font-size:clamp(18px,2vw,22px);color:var(--mute);max-width:700px;line-height:1.55}.actions{display:flex;gap:12px;flex-wrap:wrap;margin:28px 0 36px}.button{display:inline-flex;padding:12px 20px;border:1px solid var(--line);border-radius:10px;font-size:15px;font-weight:700;text-decoration:none;background:var(--panel);transition:transform .15s}.button:hover{transform:translateY(-2px)}.button.primary{background:var(--yellow);color:var(--on-yellow);border-color:var(--yellow)}figure{margin:0}.hero{width:100%;height:auto;display:block;border-radius:var(--radius);border:1px solid var(--line)}figcaption{color:var(--mute);font-size:12px;margin-top:8px}.facts{display:flex;gap:22px;flex-wrap:wrap;padding:22px 0;border-bottom:1px solid var(--line);font-size:13px;color:var(--mute)}section{padding:68px 0;border-bottom:1px solid var(--line)}h2{font-size:clamp(28px,4vw,42px);line-height:1.12;letter-spacing:-.035em;margin:10px 0 18px}h3{font-size:19px;margin:12px 0 8px;letter-spacing:-.02em}p{margin:0 0 18px}.sub{color:var(--mute);max-width:680px}.grid{display:grid;grid-template-columns:repeat(3,1fr);gap:18px;margin-top:28px}.card{background:var(--panel);border:1px solid var(--line);padding:25px;border-radius:var(--radius)}.card .step{font-size:12px;color:var(--accent);font-weight:750;letter-spacing:.1em}.card p{font-size:15px;color:var(--mute);margin:0}.preview{display:grid;grid-template-columns:1fr 360px;align-items:center;gap:64px}.preview img{width:100%;height:auto;border-radius:var(--radius);box-shadow:0 20px 60px var(--shadow)}.status{border-left:3px solid var(--accent);padding:12px 18px;background:var(--soft);border-radius:0 10px 10px 0;color:var(--mute);font-size:14px;margin:22px 0}.status strong{color:var(--ink)}.keygrid{display:grid;grid-template-columns:1fr 1fr;gap:12px;margin-top:24px}.key{display:flex;align-items:center;gap:18px;border:1px solid var(--line);border-radius:10px;padding:17px;background:var(--panel)}kbd{font:13px ui-monospace,SFMono-Regular,monospace;white-space:nowrap;background:var(--soft);padding:5px 9px;border-radius:6px;border:1px solid var(--line)}.key span{font-size:14px}.two>*{min-width:0}.two{display:grid;grid-template-columns:1fr 1fr;gap:40px}pre{font:13px/1.7 ui-monospace,SFMono-Regular,monospace;background:var(--soft);padding:20px;border:1px solid var(--line);border-radius:12px;overflow:auto}code{font: .88em ui-monospace,SFMono-Regular,monospace;overflow-wrap:anywhere}details{border-top:1px solid var(--line);padding:18px 0}summary{cursor:pointer;font-weight:650}details p{margin:14px 0 0;color:var(--mute);max-width:850px}footer{display:flex;justify-content:space-between;gap:20px;flex-wrap:wrap;padding:30px 0 44px;font-size:13px;color:var(--mute)}video{width:100%;border:1px solid var(--line);border-radius:14px;background:var(--soft)}[hidden]{display:none!important}
+@media(max-width:760px){.wrap{padding:0 20px}nav{gap:16px}nav .optional{display:none}header{padding-top:45px}.grid,.two,.preview{grid-template-columns:1fr;gap:20px}.preview img{max-width:360px;margin:auto}.keygrid{grid-template-columns:1fr}section{padding:45px 0}.facts{gap:12px 20px}h1{font-size:clamp(44px,10vw,64px)}}
+@media(prefers-reduced-motion:reduce){html{scroll-behavior:auto}*{transition:none!important}}
+</style></head>
+<body><div class="wrap">
+<nav><a class="brand" href="#"><span class="ring" aria-hidden="true"></span>Screen Pointer</a><a href="#how">How it works</a><a class="optional" href="#guide">Guide</a><a href="https://projects.navonsimon.com/">All projects ↗</a></nav>
+<header><div class="eyebrow">A visual brief for your coding agent · macOS preview</div><h1>Less explaining.<br><span>More showing.</span></h1><p class="intro">Record what you want your agent to see. Mark the important bit. Add a note. Keep moving between your apps, just as you normally would.</p><div class="actions"><a class="button primary" href="#guide">Start a walkthrough</a><a class="button" href="#preview">See the app</a><a class="button" href="https://github.com/ShimonNavon/screen-pointer/tree/agent-pointing">View source ↗</a></div><figure><img class="hero" src="https://screen-pointer.navonsimon.com/media/promo-recording.jpg" width="1600" height="900" alt="Screen Pointer promotional illustration: a yellow pointer, a note and recording frames connecting to an agent review"><figcaption>Promotional artwork — an illustration of the workflow, not a product screenshot.</figcaption></figure><div class="facts"><span>Native Mac menu-bar app</span><span>Click-through overlay</span><span>Timestamped notes</span><span>OpenCode + MCP</span></div></header>
+<section id="how"><div class="eyebrow">From “this bit here” to a useful brief</div><h2>Show the whole thought.</h2><p class="sub">A screenshot shows a moment. A walkthrough captures the path you took, what caught your eye, and the change you have in mind.</p><div class="grid"><article class="card"><span class="step">01 / RECORD</span><h3>Work as usual</h3><p>Start on the display you want to share. Open windows, scroll pages and click buttons. The overlay normally lets your clicks pass through.</p></article><article class="card"><span class="step">02 / MARK & EXPLAIN</span><h3>Make the intent visible</h3><p>Draw an arrow, box or highlight. After one stroke, ordinary clicking resumes. Add a typed note at that point in the recording.</p></article><article class="card"><span class="step">03 / REVIEW</span><h3>Give your agent context</h3><p>Stop to prepare the video, notes and review frames. Use the OpenCode handoff or ask an image-capable MCP agent to inspect the saved walkthrough.</p></article></div></section>
+<section id="preview"><div class="preview"><div><div class="eyebrow">The actual app</div><h2>One small panel.<br>Your whole workspace.</h2><p class="sub">Recording, notes, drawing tools and a single-point capture live in the menu bar. The panel hides when recording starts.</p><div class="status"><strong>Preview build — verification in progress.</strong><br>The native app compiles and the saved-package checks pass. macOS Screen Recording permission is currently blocking the end-to-end recording and agent-review test on the development Mac.</div><p class="sub">The screenshot here is the installed app. A real walkthrough video will be published after permission is enabled and the recording is verified.</p></div><figure><img src="https://screen-pointer.navonsimon.com/media/app-preview.png" width="360" height="778" alt="Actual Screen Pointer panel showing recording, notes, OpenCode review and drawing controls, with a Screen Recording permission message"><figcaption>Actual installed app, October 23, 2026.</figcaption></figure></div><div id="demo" hidden><h3>Recorded walkthrough</h3><video controls playsinline preload="metadata" poster="https://screen-pointer.navonsimon.com/media/promo-recording.jpg"></video><p class="sub" id="demo-caption"></p></div></section>
+<section id="guide"><div class="eyebrow">Quick start</div><h2>Record. Point. Leave a note.</h2><p class="sub">Open Screen Pointer and enable Screen Recording in macOS System Settings → Privacy & Security → Screen & System Audio Recording. Reopen the app if macOS asks.</p><div class="keygrid"><div class="key"><kbd>⌃ ⌥ R</kbd><span>Start or stop a walkthrough</span></div><div class="key"><kbd>⌃ ⌥ D</kbd><span>Draw one mark, then return to clicking</span></div><div class="key"><kbd>⌃ ⌥ N</kbd><span>Type a timestamped note</span></div><div class="key"><kbd>⌃ ⌥ C</kbd><span>Clear the on-screen marks</span></div><div class="key"><kbd>⌃ ⌥ H</kbd><span>Toggle the cursor ring</span></div><div class="key"><kbd>⌃ ⌥ P</kbd><span>Capture one pointed-at area</span></div></div><p class="sub">⌃ means Control; ⌥ means Option. While typing a note, press Command–Return to save or Escape to cancel. Drawing temporarily intercepts a single stroke.</p></section>
+<section><div class="two"><div><div class="eyebrow">Connect your agent</div><h2>A review you can continue.</h2><p>With OpenCode installed and an image-capable model configured, “Review in OpenCode after stopping” starts a named review session. Find it in OpenCode’s session list under <strong>Screen Pointer review</strong>.</p><p class="sub">The handoff sends the timestamped notes and up to six selected frames to your configured OpenCode provider. It disables tools for that review. Your ordinary coding sessions keep their own permissions.</p><p class="sub">For other agents, connect the local MCP server and use “Copy review prompt.” The server exposes <code>latest_recording</code>, <code>recording_frames</code> and <code>latest_point</code>.</p></div><div><div class="eyebrow">Build locally</div><h2>Small, open source.</h2><p class="sub">macOS 14+ recommended for all features. Requires Apple’s Swift command-line tools and Python 3 for the agent bridge.</p><pre>git clone --branch agent-pointing \
+  https://github.com/ShimonNavon/screen-pointer
 cd screen-pointer
-./build.sh
-open "$HOME/Applications/Screen Pointer.app"</pre>
-    <p class="sub" style="margin-top:18px">The first recording asks for Screen Recording permission. The highlight
-      itself needs no permissions at all.</p>
-  </section>
-
-  <footer>
-    <span>© <span id="yr">2026</span> Simon Navon</span>
-    <span class="pill">Made for one specific job</span>
-    <span class="sp" style="flex:1"></span>
-    <a href="https://github.com/ShimonNavon/screen-pointer">github.com/ShimonNavon/screen-pointer</a>
-  </footer>
-</div>
-<script>document.getElementById('yr').textContent = new Date().getFullYear()</script>
-</body>
-</html>
+./build.sh</pre><p class="sub">Open <code>~/Applications/Screen Pointer.app</code>. See the README for the MCP configuration and saved-session format.</p><a class="button" href="https://github.com/ShimonNavon/screen-pointer/blob/agent-pointing/README.md">Read the setup guide ↗</a></div></div></section>
+<section><div class="eyebrow">Good to know</div><h2>Clear boundaries.</h2><details open><summary>Can I still click and switch apps?</summary><p>Yes, in normal recording mode. Drawing temporarily captures one stroke, and the note editor takes keyboard focus while you type. Recording covers the display selected at the start, not every connected monitor.</p></details><details><summary>Does the agent watch the whole video?</summary><p>The current handoff uses sampled images and timestamped notes, so it can miss motion between frames. MCP agents can request additional saved frames. The complete video remains on your Mac for playback; there is no live agent feed.</p></details><details><summary>Where are the recordings?</summary><p>Each walkthrough is saved under <code>~/Movies/Screen Pointer/Sessions/</code>, with the movie, notes, frame images and metadata. The website does not receive your recordings automatically. OpenCode review shares the selected attachments with your configured model provider when enabled.</p></details><details><summary>Does it record audio?</summary><p>This preview records the screen without microphone or system audio. Typed notes carry your explanation.</p></details><details><summary>What has been verified?</summary><p>The native build and focused tests for ready/failed states and safe frame access pass. The installed control panel is shown above. Recording, note interaction and automatic agent review still need the real end-to-end test after macOS permission is enabled.</p></details></section>
+<footer><span>Built by Simon Navon · October 2026</span><a href="https://projects.navonsimon.com/">Back to all projects ↗</a><a href="https://github.com/ShimonNavon/screen-pointer/tree/agent-pointing">Source & documentation ↗</a></footer>
+</div></body></html>

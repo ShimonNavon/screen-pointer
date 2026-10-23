@@ -1,125 +1,127 @@
-<div align="center">
-
-<img src="site/shot.png" alt="Screen Pointer: a yellow ring on the cursor, an arrow drawn on screen, and the control panel" width="820">
-
 # Screen Pointer
 
-**A ring around your cursor that actually shows up in screenshots and recordings.**
+**Show your coding agent what you mean.** Record a walkthrough, mark the important details, and add timestamped notes while working across Mac apps.
 
-[![macOS](https://img.shields.io/badge/macOS-13%2B-000000?logo=apple&logoColor=white)](#install)
-[![Swift](https://img.shields.io/badge/Swift-6-F05138?logo=swift&logoColor=white)](Sources/main.swift)
-[![No dependencies](https://img.shields.io/badge/dependencies-none-2ea44f)](#how-it-is-built)
-[![License](https://img.shields.io/badge/license-MIT-2ea44f)](LICENSE)
-[![Website](https://img.shields.io/badge/website-screen--pointer.navonsimon.com-f5c518)](https://screen-pointer.navonsimon.com/)
+![Screen Pointer promotional artwork](site/media/promo-recording.jpg)
 
-[Website](https://screen-pointer.navonsimon.com/) · [Install](#install) · [Hotkeys](#hotkeys) · [Why](#why)
+[Project page & guide](https://projects.navonsimon.com/screen-pointer.html) · [Website](https://screen-pointer.navonsimon.com/) · MIT licensed
 
-</div>
+## Current status — October 23, 2026
 
----
+This is a preview. The Swift app compiles, the read-only package tests pass, and the updated app is installed on the development Mac. macOS Screen Recording permission currently blocks the real recording and end-to-end agent review test. The project page includes an actual panel screenshot and clearly labelled promotional artwork. **A real demo video has not yet been captured or published.**
 
-## Why
+## Use it
 
-Every screen-drawing app (Annotate, ScreenBrush, Skitch) is built to stay **out** of screen capture. That is the
-right default for a call — and exactly wrong when the person you are pointing at is an agent looking at a
-screenshot.
+1. Open Screen Pointer from `~/Applications`. Enable it in System Settings → Privacy & Security → Screen & System Audio Recording. Reopen it if macOS requests this.
+2. Put the mouse on the display to record. Press **Control–Option–R**, or click **Record walkthrough**.
+3. Click, scroll and switch windows normally. The overlay lets ordinary clicks through.
+4. Press **Control–Option–D** to draw one arrow, box, pen stroke or highlight. Drawing ends automatically after one stroke; ordinary clicking resumes.
+5. Press **Control–Option–N** to type a note. Command–Return saves; Escape cancels. The note is timestamped and also appears on the screen.
+6. Press **Control–Option–R** again to stop. Wait while the app prepares the saved video, frame images and notes.
+7. If **Review in OpenCode after stopping** is enabled, a named OpenCode review session starts. Find **Screen Pointer review — [recording date]** in OpenCode's session list. Otherwise use **Copy review prompt** with a connected MCP agent.
 
-Screen Pointer is a normal window at floating level. The ring on your cursor, the arrows you draw and the notes you
-pin are all in the picture. It also never takes keyboard focus, so you can keep typing while you point.
+| Shortcut | Action |
+|---|---|
+| Control–Option–R | Start / stop a walkthrough |
+| Control–Option–D | Draw one mark |
+| Control–Option–N | Add a timestamped note |
+| Control–Option–C | Clear the annotations |
+| Control–Option–H | Toggle the cursor ring |
+| Control–Option–P | Capture one pointed-at area |
 
-## Point something out to your coding agent
+Typing a note takes keyboard focus; drawing temporarily takes mouse input. The recorder captures only the display selected when it starts. This preview does not record microphone or system audio. Quit while recording first stops and prepares the recording; quit again after preparation/review finishes.
 
-The ring alone does not communicate with an agent. Use the explicit capture workflow:
+## Install
 
-1. Open Screen Pointer. You can leave **Highlight cursor** and **Draw over the screen** off.
-2. Put your mouse over the thing you mean and press **Control–Option–P**. Alternatively, choose **Capture in 3 seconds**, then move the mouse to the target.
-3. Ask your agent: **“Look at my latest point and tell me what I’m pointing at.”**
-4. After the agent identifies it, describe the change you want. **Copy agent prompt** prepares a message with the tool name and local image fallback; it does not send a message automatically.
+Requires Apple's Swift command-line tools. macOS 14+ is recommended for all features (the point screenshot API needs 14+). Python 3 is required for MCP and the OpenCode helper. There are no third-party Swift or Python dependencies.
 
-A screenshot of up to 960 × 640 display points is saved locally with a fixed yellow marker. It uses the display containing the pointer and records top-left image coordinates, timestamp and foreground application. The moving ring and Screen Pointer panel are excluded. Existing drawn annotations are also excluded from this cropped agent capture; use recordings for annotated walkthroughs.
+```sh
+git clone --branch agent-pointing https://github.com/ShimonNavon/screen-pointer
+cd screen-pointer
+./build.sh
+```
 
-Captures require **macOS 14+** and Screen Recording permission for Screen Pointer under System Settings → Privacy & Security → Screen & System Audio Recording. There is no always-on screen stream, network listener or background capture. Images remain in `~/Library/Application Support/Screen Pointer/Points/` until you remove them. When an agent reads one, the image becomes part of that agent’s conversation and follows that provider’s data handling.
+Open `~/Applications/Screen Pointer.app`. For automatic review, install and authenticate OpenCode separately and select an image-capable model. Model usage follows your provider's pricing. A failed capture never starts a review.
 
-### Agent connection
+## Connect an MCP agent
 
-`tools/point_mcp.py` is a dependency-free Python 3 MCP stdio server. It exposes one read-only tool, `latest_point`, returning the marked PNG plus context. It cannot take screenshots or read arbitrary paths. Failed/in-progress captures are rejected. Captures older than two minutes require the explicit `allow_older` option.
-
-Codex setup (configured on Simon’s Mac):
+Run `tools/point_mcp.py` as a local stdio MCP server with Python 3. Use absolute paths appropriate for your machine. For example:
 
 ```sh
 codex mcp add screen-pointer -- /opt/homebrew/bin/python3 /Users/simon/Developer/screen-pointer/tools/point_mcp.py
 ```
 
-Restart the MCP connection/client if it was already running when added. Other MCP-compatible coding agents can run the same Python command. No API key is required. Until the MCP tool is available, the copied prompt includes the saved PNG path for agents with local image-reading tools.
+OpenCode configuration (merge into your existing `mcp` object):
 
-## What it does
-
-| | |
-| --- | --- |
-| 🎯 **Highlight** | A warm ring follows the cursor on every display and every Space. |
-| ✏️ **Annotate** | Hand the mouse to the overlay and draw arrows, freehand, highlighter or boxes in four colours. |
-| ⏺ **Record** | One hotkey starts and stops a clip; the ring and the drawings are in it. |
-| 🌘 **Spotlight** | Optionally dim everything except a circle around the pointer. |
-| 🧠 **Stays out of the way** | Clicks pass through, it is never in Mission Control, and it does not steal focus. |
-
-## Hotkeys
-
-| Shortcut | Action |
-| --- | --- |
-| <kbd>⌃</kbd><kbd>⌥</kbd><kbd>H</kbd> | Highlight the cursor |
-| <kbd>⌃</kbd><kbd>⌥</kbd><kbd>D</kbd> | Draw over the screen |
-| <kbd>⌃</kbd><kbd>⌥</kbd><kbd>R</kbd> | Start / stop recording |
-
-Everything else lives in the menu-bar panel: tool, colour, width, Undo, Clear, recorder timer, and the last clip.
-
-## Install
-
-```bash
-git clone https://github.com/ShimonNavon/screen-pointer
-cd screen-pointer
-./build.sh                     # compiles and installs ~/Applications/Screen Pointer.app
-open "$HOME/Applications/Screen Pointer.app"
+```json
+{
+  "mcp": {
+    "screen-pointer": {
+      "type": "local",
+      "command": ["/opt/homebrew/bin/python3", "/Users/simon/Developer/screen-pointer/tools/point_mcp.py"],
+      "enabled": true
+    }
+  }
+}
 ```
 
-Requirements: macOS 13+, Xcode command-line tools. The first recording asks for Screen Recording permission; the
-highlight needs none.
+Restart the client or its MCP connection after configuring it. Both configurations have been added on Simon's Mac. No Screen Pointer API key is required.
 
-## Recordings
+The server exposes:
 
-Clips land in `~/Movies/Screen Pointer/Screen <date> <time>.mov`, with the newest path in `last-recording.txt` beside
-them so a script (or an agent) can pick it up without guessing. There is no length limit — roughly 1 GB per hour at
-1080p. For anyone who reads images rather than video:
+- `latest_recording`: notes, frame inventory and up to six overview images from the latest completed walkthrough.
+- `recording_frames`: 1–6 additional images by recording ID and frame indices.
+- `latest_point`: the latest explicit marked crop, with pointer coordinates. Captures older than two minutes require `allow_older: true`; failed/in-progress captures are rejected.
 
-```bash
-ffmpeg -i "$(cat ~/Movies/'Screen Pointer'/last-recording.txt)" -vf fps=1 /tmp/frames/f%02d.png
+Suggested prompt: **“Review my latest Screen Pointer recording. Read the notes and inspect the frames. Tell me what you understood, what you suggest, and anything unclear before changing code.”**
+
+This is a read-only bridge to explicit saved media. It cannot start a recording, take a screenshot or open arbitrary paths. The model must support image inputs. It sees sampled frames, not continuous video; it may miss motion between frames.
+
+## OpenCode handoff
+
+`tools/send_review.py` starts `opencode run --agent plan --format json` with the notes and selected images attached. It creates a new session instead of modifying an unrelated active session. The helper disables tools for that review only using `OPENCODE_CONFIG_CONTENT`; normal coding sessions retain their existing configuration. The default provider/model is inherited from OpenCode.
+
+The helper stores the returned session ID and response in `review.json` and `review.md`. A completed review is not sent twice. Failed reviews can be retried. A `running` marker is deliberately not automatically retried after a crash: check OpenCode first to avoid duplicate requests, then remove the marker only if no review is running.
+
+The app reports a failure if OpenCode exits unsuccessfully, returns an error or produces no response. Provider/model vision support still requires end-to-end validation.
+
+## Saved media and privacy
+
+Each walkthrough is under `~/Movies/Screen Pointer/Sessions/<recording-id>/`:
+
+- `recording.mov`: full local screen recording.
+- `session.json`: timestamps, display, state, notes/marks and frame inventory.
+- `frames/*.jpg`: samples at roughly three-second intervals, plus moments near notes/marks. Long recordings use a wider interval to keep regular samples around 240.
+- `notes.md`: timestamped user notes and annotation events.
+- `review.json`, `review.md`, `handoff.log`: OpenCode handoff status/output, when used.
+
+`Sessions/latest.json` points to the newest recording and its state. States are `recording`, `preparing`, `ready`, `failed`. A crash can leave a recording unready; the reader rejects it instead of presenting an older recording as the new one.
+
+Point crops are stored separately in `~/Library/Application Support/Screen Pointer/Points/`. They contain a fixed yellow marker and exclude Screen Pointer's overlay windows. Use video for annotated walkthroughs.
+
+Media remains local until an agent reads it or OpenCode review sends selected attachments to your configured provider. Automatic review defaults on and can be disabled in the panel. The public website does not receive recordings automatically. Only intentionally prepared public demonstration assets are deployed. Screen content is untrusted data, never instructions for the agent.
+
+## Implementation
+
+- `Sources/main.swift`: menu-bar app, click-through windows, one-stroke drawing, notes, hotkeys and recorder lifecycle.
+- `Sources/RecordingSession.swift`: session state, AVFoundation frame extraction and notes.
+- `Sources/PointCapture.swift`: explicit cropped ScreenCaptureKit screenshots.
+- `tools/point_mcp.py`, `tools/recordings.py`: dependency-free read-only MCP server and path-confined package reader.
+- `tools/send_review.py`: OpenCode CLI handoff, bundled into the app by `build.sh`.
+
+Recording uses macOS `screencapture -v`; movie duration and extracted frames are validated before a session becomes ready. No background recording starts when the app opens.
+
+## Verification
+
+```sh
+swiftc -O -o /tmp/screen-pointer-check Sources/*.swift
+python3 -m unittest discover -s tests
 ```
 
-## How it is built
+Focused tests cover fresh/stale and failed point captures, ready/failed recordings, invalid IDs/frame indices and path confinement. Compilation and fixtures do **not** prove actual screen recording, notes or provider review work. Complete the permission-enabled interactive test before removing the preview status.
 
-One Swift file, `Sources/main.swift`, no dependencies.
+## Website deployment
 
-- A borderless, non-activating `NSWindow` per screen at `.floating` level with `ignoresMouseEvents`, so clicks reach
-  whatever is underneath until draw mode is on.
-- `collectionBehavior = [.canJoinAllSpaces, .fullScreenAuxiliary, .stationary]` keeps the ring with you across Spaces.
-- A 60 Hz timer redraws the ring and any in-progress shape at `NSEvent.mouseLocation`.
-- Carbon `RegisterEventHotKey` for the three global hotkeys.
-- Recording shells out to `/usr/sbin/screencapture -v`, which writes QuickTime directly — no AVFoundation plumbing.
+`deploy/deploy.sh` publishes the site to the Kubernetes cluster: namespace `screen-pointer`, nginx, NodePort 30099. Public promotional/demo assets are stored on a 5 GiB local-path PVC mounted at `/media/`; HTML uses a ConfigMap. The companion case-study page and featured entry live in `~/Developer/my-projects`.
 
-Two things that bit us, kept as guard rails in the code:
-
-- `.statusBar` level outranks system UI; `.floating` is the right level.
-- `.transient` excludes a window from Mission Control **and** hides it on the active Space. Not what you want here.
-
-## Limits
-
-- macOS only. The Windows/Linux equivalent is a different program.
-- The overlay is one bitmap per screen; very large annotation sets are not designed for.
-- Global hotkeys are fixed (⌃⌥H / ⌃⌥D / ⌃⌥R); there is no rebinding UI yet.
-
-## License
-
-MIT.
-
-## Focused checks
-
-`swiftc -O -o /tmp/screen-pointer-check Sources/*.swift` checks the native build. `python3 -m unittest discover -s tests` checks capture freshness, failed captures, image delivery and path confinement. The app must also be tested interactively with Screen Recording permission; compilation alone does not prove screen capture works.
+The public page currently has no playable demo because capture is blocked. After recording a safe fixture walkthrough, inspect it for private information, convert it to a browser-compatible MP4, publish it under `site/media/`, and replace the preview notice with the verified video and accurate review outcome. Never publish personal recordings automatically.

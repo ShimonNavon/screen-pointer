@@ -1,4 +1,6 @@
+import sys
 import base64,datetime as dt,importlib.util,json,pathlib,tempfile,unittest
+sys.path.insert(0,str(pathlib.Path(__file__).resolve().parents[1]/'tools'))
 spec=importlib.util.spec_from_file_location('point',pathlib.Path(__file__).resolve().parents[1]/'tools/point_mcp.py');mod=importlib.util.module_from_spec(spec);spec.loader.exec_module(mod)
 PNG=base64.b64decode('iVBORw0KGgoAAAANSUhEUgAAAAEAAAABCAQAAAC1HAwCAAAAC0lEQVR42mP8/x8AAwMCAO+aS1EAAAAASUVORK5CYII=')
 class CaptureTests(unittest.TestCase):
